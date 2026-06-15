@@ -16,9 +16,9 @@ extends RefCounted
 # ── Beam Colors (from the GDD neon palette) ──────────────────────────────────
 
 const WHITE := Color(0.91, 0.91, 1.0)   # #e8e8ff — full spectrum
-const RED   := Color(1.0, 0.2, 0.33)    # #ff3355
-const GREEN := Color(0.0, 1.0, 0.53)    # #00ff88
-const BLUE  := Color(0.27, 0.4, 1.0)    # #4466ff
+const RED   := Color(1.0, 0.25, 0.2)     # #ff4033 — bright warm red
+const GREEN := Color(0.0, 1.0, 0.53)     # #00ff88
+const BLUE  := Color(0.3, 0.55, 1.0)     # #4d99ff — clear bright blue
 
 
 ## A straight segment of a beam between two grid points (in world space).

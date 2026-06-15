@@ -215,10 +215,16 @@ func _draw_targets() -> void:
 			draw_arc(c, r * pulse, 0, TAU, 36, base_col, 3.0)
 			draw_circle(c, r * 0.55 * pulse, base_col)
 		else:
-			# Unhit — dim ring with slow breathing
-			var breath := 0.2 + sin(_time * 1.5 + pos.x * 0.5) * 0.05
-			var col := Color(base_col.r, base_col.g, base_col.b, breath)
-			draw_arc(c, r, 0, TAU, 36, col, 2.0)
+			# Unhit — solid filled ring so the required color is clearly readable
+			var breath := 0.5 + sin(_time * 1.5 + pos.x * 0.5) * 0.1
+			# Outer glow
+			draw_circle(c, r * 1.3, Color(base_col.r, base_col.g, base_col.b, 0.05 * breath))
+			# Filled disc — dim but clearly shows the color
+			draw_circle(c, r, Color(base_col.r, base_col.g, base_col.b, 0.12 * breath))
+			# Bright ring
+			draw_arc(c, r, 0, TAU, 36, Color(base_col.r, base_col.g, base_col.b, 0.7), 2.5)
+			# Inner dot — solid color core
+			draw_circle(c, r * 0.35, Color(base_col.r, base_col.g, base_col.b, 0.5))
 
 
 func _draw_mirrors() -> void:
