@@ -256,21 +256,25 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed:
 		match event.keycode:
 			KEY_1:
-				active_tool = 0
-				tools_changed.emit()
-				queue_redraw()
+				if mirror_budget > 0:
+					active_tool = 0
+					tools_changed.emit()
+					queue_redraw()
 			KEY_2:
-				active_tool = 1
-				tools_changed.emit()
-				queue_redraw()
+				if prism_budget > 0:
+					active_tool = 1
+					tools_changed.emit()
+					queue_redraw()
 			KEY_3:
-				active_tool = 2
-				tools_changed.emit()
-				queue_redraw()
+				if filter_budget > 0:
+					active_tool = 2
+					tools_changed.emit()
+					queue_redraw()
 			KEY_4:
-				active_tool = 3
-				tools_changed.emit()
-				queue_redraw()
+				if splitter_budget > 0:
+					active_tool = 3
+					tools_changed.emit()
+					queue_redraw()
 			KEY_R:
 				_rotate_hovered()
 

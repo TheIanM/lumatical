@@ -114,6 +114,18 @@ var _solved := false
 var _overlay: ColorRect
 var _next_button: Button
 
+# Toolbelt nodes
+var _toolbelt: HBoxContainer
+var _tool_buttons: Array = []
+
+const TOOL_NAMES := ["Mirror", "Prism", "Filter", "Splitter"]
+const TOOL_COLORS := [
+	Color(0.0, 0.94, 1.0),   # Mirror — cyan
+	Color(1.0, 0.0, 0.9),    # Prism — magenta
+	Color(1.0, 0.9, 0.0),    # Filter — yellow
+	Color(1.0, 0.53, 0.0),   # Splitter — orange
+]
+
 
 func _ready() -> void:
 	grid.position = GRID_OFFSET
@@ -126,6 +138,7 @@ func _ready() -> void:
 	grid.tools_changed.connect(_on_tools_changed)
 
 	_create_overlay()
+	_create_toolbelt()
 	_load_level(0)
 
 
@@ -188,6 +201,61 @@ func _on_next_pressed() -> void:
 	_load_level(next_index)
 
 
+# ── Toolbelt ─────────────────────────────────────────────────────────────────
+
+func _create_toolbelt() -> void:
+	var ui: CanvasLayer = $UI
+
+	_toolbelt = HBoxContainer.new()
+	_toolbelt.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_toolbelt.offset_top = -76
+	_toolbelt.offset_bottom = -12
+	_toolbelt.alignment = BoxContainer.ALIGNMENT_CENTER
+	_toolbelt.add_theme_constant_override("separation", 8)
+	ui.add_child(_toolbelt)
+
+	for i in range(4):
+		var btn := Button.new()
+		btn.text = "[%d] %s" % [i + 1, TOOL_NAMES[i]]
+		btn.custom_minimum_size = Vector2(150, 56)
+		btn.add_theme_font_size_override("font_size", 16)
+		btn.pressed.connect(_on_toolbelt_button.bind(i))
+		_toolbelt.add_child(btn)
+		_tool_buttons.append(btn)
+
+
+func _update_toolbelt() -> void:
+	var budgets := [
+		LEVELS[_current_level]["mirror_budget"],
+		LEVELS[_current_level].get("prism_budget", 0),
+		LEVELS[_current_level].get("filter_budget", 0),
+		LEVELS[_current_level].get("splitter_budget", 0),
+	]
+	var used := [
+		grid.mirrors.size(),
+		grid.prisms.size(),
+		grid.filters.size(),
+		grid.splitters.size(),
+	]
+
+	for i in range(4):
+		var btn: Button = _tool_buttons[i]
+		if budgets[i] == 0:
+			btn.visible = false
+			continue
+		btn.visible = true
+		btn.text = "[%d] %s  %d/%d" % [i + 1, TOOL_NAMES[i], used[i], budgets[i]]
+		var col: Color = TOOL_COLORS[i] if grid.active_tool == i else Color(0.5, 0.5, 0.6)
+		btn.add_theme_color_override("font_color", col)
+		btn.add_theme_color_override("font_hover_color", col.lightened(0.3))
+
+
+func _on_toolbelt_button(tool_index: int) -> void:
+	grid.active_tool = tool_index
+	_update_status()
+	grid.queue_redraw()
+
+
 # ── Level Loading ────────────────────────────────────────────────────────────
 
 func _load_level(index: int) -> void:
@@ -202,6 +270,7 @@ func _load_level(index: int) -> void:
 	grid.prism_budget = level.get("prism_budget", 0)
 	grid.filter_budget = level.get("filter_budget", 0)
 	grid.splitter_budget = level.get("splitter_budget", 0)
+	grid.active_tool = 0
 	grid.mirrors.clear()
 	grid.prisms.clear()
 	grid.filters.clear()
@@ -269,21 +338,10 @@ func _check_win(hit_targets: Array) -> bool:
 func _update_status() -> void:
 	if _solved:
 		return
-	var m_used := grid.mirrors.size()
-	var m_budget: int = LEVELS[_current_level]["mirror_budget"]
-	var p_used := grid.prisms.size()
-	var p_budget: int = LEVELS[_current_level].get("prism_budget", 0)
-	var f_used := grid.filters.size()
-	var f_budget: int = LEVELS[_current_level].get("filter_budget", 0)
-	var s_used := grid.splitters.size()
-	var s_budget: int = LEVELS[_current_level].get("splitter_budget", 0)
-	var tool_names := ["Mirror", "Prism", "Filter", "Splitter"]
-	var tool_name: String = tool_names[grid.active_tool]
-	status_label.text = "P%d/%d  M:%d/%d P:%d/%d F:%d/%d S:%d/%d  |  [1]Mir [2]Prism [3]Filter [4]Split  Active:%s  R:cycle" % [
+	status_label.text = "Puzzle %d/%d  |  L-click: place  R-click: remove  R: cycle/rotate" % [
 		_current_level + 1, LEVELS.size(),
-		m_used, m_budget, p_used, p_budget, f_used, f_budget, s_used, s_budget,
-		tool_name,
 	]
+	_update_toolbelt()
 
 
 # ── Input ────────────────────────────────────────────────────────────────────
