@@ -218,11 +218,11 @@ func _get_glyph(ch: String) -> Array:
 	match ch:
 		"L": return [Vector2(0, 0), Vector2(0, 1.4), Vector2(0.7, 1.4)]
 		"U": return [Vector2(0, 0), Vector2(0, 1.2), Vector2(0.7, 1.2), Vector2(0.7, 0)]
-		"M": return [Vector2(0, 0), Vector2(0, 1.4), Vector2(0.35, 0.55), Vector2(0.7, 1.4), Vector2(0.7, 0)]
+		"M": return [Vector2(0, 1.4), Vector2(0, 0), Vector2(0.35, 0.7), Vector2(0.7, 0), Vector2(0.7, 1.4)]
 		"A": return [Vector2(0, 1.4), Vector2(0.35, 0), Vector2(0.7, 1.4)]
 		# T is handled by _draw_prism_t
 		"I": return [Vector2(0.35, 0), Vector2(0.35, 1.4)]
-		"C": return [Vector2(0.75, 0.2), Vector2(0.5, 0), Vector2(0.2, 0), Vector2(0, 0.3), Vector2(0, 1.1), Vector2(0.2, 1.4), Vector2(0.5, 1.4), Vector2(0.75, 1.2)]
+		"C": return [Vector2(1.0, 0), Vector2(0, 0), Vector2(0, 1.4), Vector2(1.0, 1.4)]
 		_: return []
 
 
