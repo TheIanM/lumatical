@@ -85,24 +85,38 @@ func _draw_particles() -> void:
 
 
 func _draw_title_beams() -> void:
-	var palette := [ACCENT_CYAN, ACCENT_MAGENTA, ACCENT_GREEN, Color(1.0, 0.9, 0.0), TITLE_COLOR]
-	_draw_beam_text("LUMATICAL", Vector2(_viewport_size.x * 0.5, 130), 48.0, palette)
+	_draw_beam_text("LUMATICAL", Vector2(_viewport_size.x * 0.5, 130), 48.0, TITLE_COLOR)
 
 
 ## Draw a string where each letter is one continuous beam bouncing off
-## mirrors at each corner. Each letter gets its own color and source dot.
-func _draw_beam_text(text: String, center: Vector2, letter_h: float, palette: Array) -> void:
+## mirrors at each corner. All letters share a single color.
+func _draw_beam_text(text: String, center: Vector2, letter_h: float, col: Color) -> void:
 	var chars := text.to_upper()
 	var letter_w := letter_h * 0.6
-	var spacing := letter_w * 1.25
-	var total_w := spacing * (chars.length() - 1)
-	var start_x := center.x - total_w * 0.5
+	var default_spacing := letter_w * 1.25
 	var pulse := 1.0 + sin(_time * 1.5) * 0.04
 
+	# Build per-letter spacing — extra gap after C (before A in LUMATICAL)
+	var spacings: Array = []
+	for i in range(chars.length()):
+		if i > 0 and chars[i - 1] == "C":
+			spacings.append(default_spacing * 1.7)
+		else:
+			spacings.append(default_spacing)
+
+	# Compute total width from cumulative spacings
+	var total_w := 0.0
+	for i in range(1, chars.length()):
+		total_w += spacings[i]
+	var start_x := center.x - total_w * 0.5
+
+	# Running x offset
+	var x_off := 0.0
 	for i in range(chars.length()):
 		var ch := chars[i]
-		var col: Color = palette[i % palette.size()]
-		var origin := Vector2(start_x + i * spacing, center.y)
+		if i > 0:
+			x_off += spacings[i]
+		var origin := Vector2(start_x + x_off, center.y)
 
 		if ch == "T":
 			_draw_prism_t(origin, letter_w, letter_h, col, pulse, i)
@@ -137,7 +151,8 @@ func _draw_prism_t(origin: Vector2, lw: float, lh: float, col: Color, pulse: flo
 	var center := origin + Vector2(0.35 * lw, 0)
 	var right := origin + Vector2(0.7 * lw, 0)
 	var bottom := origin + Vector2(0.35 * lw, 1.4 * lh)
-	var overshoot := origin + Vector2(0.35 * lw, -0.18 * lh)
+	# Extend up further for taller arms
+	var overshoot := origin + Vector2(0.35 * lw, -0.35 * lh)
 
 	# Source dot
 	_draw_source(left, col, src_pulse)
@@ -146,14 +161,14 @@ func _draw_prism_t(origin: Vector2, lw: float, lh: float, col: Color, pulse: flo
 	# Prism at junction
 	_draw_prism_icon(center, pulse)
 	# Green beam continues right (right half of top bar)
-	_draw_glow_line(center, right, ACCENT_GREEN, pulse)
-	_draw_endpoint(right, ACCENT_GREEN, pulse)
+	_draw_glow_line(center, right, col, pulse)
+	_draw_endpoint(right, col, pulse)
 	# Blue beam drops down (the stem)
-	_draw_glow_line(center, bottom, Color(0.3, 0.55, 1.0), pulse)
-	_draw_endpoint(bottom, Color(0.3, 0.55, 1.0), pulse)
-	# Red beam shoots up briefly (overspray)
-	_draw_glow_line(center, overshoot, Color(1.0, 0.25, 0.2), pulse)
-	_draw_endpoint(overshoot, Color(1.0, 0.25, 0.2), pulse)
+	_draw_glow_line(center, bottom, col, pulse)
+	_draw_endpoint(bottom, col, pulse)
+	# Red beam shoots up (extended overshoot for taller T)
+	_draw_glow_line(center, overshoot, col, pulse)
+	_draw_endpoint(overshoot, col, pulse)
 
 
 func _draw_prism_icon(pos: Vector2, pulse: float) -> void:
