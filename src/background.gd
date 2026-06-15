@@ -85,8 +85,8 @@ func _draw_breathing_void() -> void:
 	var r1 := _viewport_size.length() * (0.3 + breath * 0.05)
 	var r2 := _viewport_size.length() * (0.25 + (1.0 - breath) * 0.05)
 
-	_draw_radial_gradient(center1, r1, Color(0.0, 0.04, 0.06, 1.0))
-	_draw_radial_gradient(center2, r2, Color(0.04, 0.0, 0.04, 1.0))
+	_draw_radial_gradient(center1, r1, Color(0.0, 0.12, 0.16, 1.0))
+	_draw_radial_gradient(center2, r2, Color(0.12, 0.0, 0.12, 1.0))
 
 
 func _draw_radial_gradient(center: Vector2, radius: float, col: Color) -> void:
@@ -94,7 +94,7 @@ func _draw_radial_gradient(center: Vector2, radius: float, col: Color) -> void:
 	for i in range(steps):
 		var t := float(i) / float(steps - 1)
 		var r := radius * (1.0 - t * 0.85)
-		var alpha := col.a * (1.0 - t) * 0.3
+		var alpha := col.a * (1.0 - t) * 0.5
 		draw_circle(center, r, Color(col.r, col.g, col.b, alpha))
 
 
@@ -119,11 +119,11 @@ func _draw_wireframes() -> void:
 			var angle := rot + TAU * i / float(shape["sides"])
 			pts.append(shape["center"] + Vector2(cos(angle), sin(angle)) * r)
 		# Faint filled body
-		draw_colored_polygon(pts, Color(col.r, col.g, col.b, 0.012))
+		draw_colored_polygon(pts, Color(col.r, col.g, col.b, 0.04))
 		# Outline — two passes for a soft glow
 		for i in range(pts.size()):
-			draw_line(pts[i], pts[(i + 1) % pts.size()], Color(col.r, col.g, col.b, 0.015), 5.0)
-			draw_line(pts[i], pts[(i + 1) % pts.size()], Color(col.r, col.g, col.b, 0.04), 1.5)
+			draw_line(pts[i], pts[(i + 1) % pts.size()], Color(col.r, col.g, col.b, 0.05), 5.0)
+			draw_line(pts[i], pts[(i + 1) % pts.size()], Color(col.r, col.g, col.b, 0.12), 1.5)
 
 
 # ── Energy Ripples ──────────────────────────────────────────────────────────────
@@ -151,10 +151,10 @@ func _draw_ripples() -> void:
 		var radius: float = float(r["max_r"]) * progress
 		var col: Color = r["color"]
 		# Fade out as it expands
-		var alpha := (1.0 - progress) * 0.08
+		var alpha := (1.0 - progress) * 0.15
 		draw_arc(r["center"], radius, 0, TAU, 64, Color(col.r, col.g, col.b, alpha), 2.0)
 		# Inner echo
-		var alpha2 := (1.0 - progress) * 0.04
+		var alpha2 := (1.0 - progress) * 0.08
 		draw_arc(r["center"], radius * 0.8, 0, TAU, 64, Color(col.r, col.g, col.b, alpha2), 1.0)
 
 
@@ -175,7 +175,7 @@ func _draw_constellations() -> void:
 					(col1.r + col2.r) * 0.5,
 					(col1.g + col2.g) * 0.5,
 					(col1.b + col2.b) * 0.5,
-					t * 0.035
+					t * 0.08
 				)
 				draw_line(p1, p2, col, 1.0)
 
@@ -217,7 +217,7 @@ func _spawn_particles() -> void:
 			),
 			"size": rng.randf_range(1.0, 2.5),
 			"color": palette[rng.randi() % palette.size()],
-			"base_alpha": rng.randf_range(0.06, 0.18),
+			"base_alpha": rng.randf_range(0.15, 0.35),
 			"flicker_speed": rng.randf_range(0.5, 2.0),
 			"flicker_offset": rng.randf() * TAU,
 		})
