@@ -12,31 +12,62 @@ const GRID_W := 12
 const GRID_H := 8
 const GRID_OFFSET := Vector2(256, 104)
 
-# Neon white — the signature beam color from the GDD
-const BEAM_COLOR := Color(0.91, 0.91, 1.0)
+# Beam colors — BeamSimulator is the single source of truth
+const BEAM_COLOR := BeamSimulator.WHITE
+const C_RED   := BeamSimulator.RED
+const C_GREEN := BeamSimulator.GREEN
+const C_BLUE  := BeamSimulator.BLUE
 
 # ── Level Definitions ────────────────────────────────────────────────────────
-# Puzzle 1: One corner — learn mirrors redirect light.
-# Puzzle 2: Blocker forces a U-route — learn to route around obstacles.
-# Puzzle 3: Two corners, no blocker — plan a multi-step path.
 const LEVELS := [
+	# ── Chapter I: Mirrors ──
+	# Puzzle 1: One corner — learn mirrors redirect light.
 	{
 		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
 		"targets": {Vector2i(10, 1): {"color": BEAM_COLOR}},
 		"blockers": [],
 		"mirror_budget": 2,
+		"prism_budget": 0,
 	},
+	# Puzzle 2: Blocker forces a detour — route around obstacles.
 	{
 		"sources": [{"pos": Vector2i(1, 1), "direction": Vector2i(0, 1), "color": BEAM_COLOR, "intensity": 1.0}],
 		"targets": {Vector2i(10, 6): {"color": BEAM_COLOR}},
 		"blockers": [Vector2i(1, 6)],
 		"mirror_budget": 2,
+		"prism_budget": 0,
 	},
+	# Puzzle 3: Two corners, no blocker — plan a multi-step path.
 	{
 		"sources": [{"pos": Vector2i(1, 1), "direction": Vector2i(0, 1), "color": BEAM_COLOR, "intensity": 1.0}],
 		"targets": {Vector2i(10, 1): {"color": BEAM_COLOR}},
 		"blockers": [],
 		"mirror_budget": 2,
+		"prism_budget": 0,
+	},
+	# ── Chapter II: Prisms & Color ──
+	# Puzzle 4: Meet the prism — split white into red and green, one mirror.
+	{
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 1): {"color": C_RED},
+			Vector2i(10, 4): {"color": C_GREEN},
+		},
+		"blockers": [],
+		"mirror_budget": 1,
+		"prism_budget": 1,
+	},
+	# Puzzle 5: Full spectrum — split into RGB, mirrors for red and blue.
+	{
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 1): {"color": C_RED},
+			Vector2i(10, 4): {"color": C_GREEN},
+			Vector2i(10, 7): {"color": C_BLUE},
+		},
+		"blockers": [],
+		"mirror_budget": 2,
+		"prism_budget": 1,
 	},
 ]
 
@@ -136,7 +167,9 @@ func _load_level(index: int) -> void:
 	grid.targets = level["targets"].duplicate(true)
 	grid.blockers = level["blockers"].duplicate(true)
 	grid.mirror_budget = level["mirror_budget"]
+	grid.prism_budget = level.get("prism_budget", 0)
 	grid.mirrors.clear()
+	grid.prisms.clear()
 	grid.queue_redraw()
 
 	status_label.remove_theme_color_override("font_color")
@@ -181,6 +214,8 @@ func _build_tools_dict() -> Dictionary:
 		d[pos] = {"type": "blocker"}
 	for pos in grid.mirrors:
 		d[pos] = {"type": "mirror", "orientation": int(grid.mirrors[pos])}
+	for pos in grid.prisms:
+		d[pos] = {"type": "prism", "orientation": int(grid.prisms[pos])}
 	return d
 
 
@@ -194,10 +229,15 @@ func _check_win(hit_targets: Array) -> bool:
 func _update_status() -> void:
 	if _solved:
 		return
-	var used := grid.mirrors.size()
-	var budget: int = LEVELS[_current_level]["mirror_budget"]
-	status_label.text = "Puzzle %d/%d  |  Mirrors: %d / %d  |  Left-click: place/toggle   Right-click: remove" % [
-		_current_level + 1, LEVELS.size(), used, budget,
+	var m_used := grid.mirrors.size()
+	var m_budget: int = LEVELS[_current_level]["mirror_budget"]
+	var p_used := grid.prisms.size()
+	var p_budget: int = LEVELS[_current_level].get("prism_budget", 0)
+	var tool_name := "Mirror" if grid.active_tool == 0 else "Prism"
+	status_label.text = "Puzzle %d/%d  |  Mirrors: %d/%d  Prisms: %d/%d  |  [1]Mirror [2]Prism  Active: %s  |  L-click:place R-click:remove R:rotate" % [
+		_current_level + 1, LEVELS.size(),
+		m_used, m_budget, p_used, p_budget,
+		tool_name,
 	]
 
 

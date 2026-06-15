@@ -4,8 +4,8 @@ extends Node2D
 ## Isometric grid system for Lumatical (top-down 2D prototype).
 ##
 ## Manages all cell-based game state: fixed elements (sources, targets,
-## blockers) and player-placed tools (mirrors). Handles mouse input for
-## tool placement, rotation, and removal. Draws the grid itself plus all
+## blockers) and player-placed tools (mirrors, prisms). Handles keyboard
+## and mouse input for tool placement, rotation, and removal. Draws the
 ## elements via _draw().
 
 signal tools_changed
@@ -21,9 +21,14 @@ var blockers: Array = []
 
 # Player-placed tools
 var mirrors: Dictionary = {}   # Vector2i -> int (0="/", 1="\")
+var prisms: Dictionary = {}    # Vector2i -> int (0=default, 1=flipped)
 
-# How many mirrors the player is allowed to place
+# How many of each tool the player is allowed to place
 var mirror_budget: int = 2
+var prism_budget: int = 0
+
+# Currently selected tool for placement (0=mirror, 1=prism)
+var active_tool: int = 0
 
 # Runtime — updated by the controller after simulation
 var _hit_targets: Dictionary = {}
@@ -36,9 +41,8 @@ const C_GRID := Color(0.06, 0.06, 0.12, 0.6)
 const C_GRID_BORDER := Color(0.1, 0.1, 0.21, 0.9)
 const C_SOURCE := Color(0.91, 0.91, 1.0)          # #e8e8ff neon white
 const C_SOURCE_GLOW := Color(0.91, 0.91, 1.0, 0.15)
-const C_TARGET := Color(0.0, 1.0, 0.53)           # #00ff88 neon green
-const C_TARGET_DIM := Color(0.0, 0.45, 0.24, 0.4)
 const C_MIRROR := Color(0.0, 0.94, 1.0)           # #00f0ff neon cyan
+const C_PRISM := Color(1.0, 0.0, 0.9)             # #ff00e5 neon magenta
 const C_BLOCKER := Color(0.18, 0.18, 0.22)
 const C_HOVER := Color(1, 1, 1, 0.06)
 
@@ -55,6 +59,7 @@ func _draw() -> void:
 	_draw_grid_lines()
 	_draw_blockers()
 	_draw_targets()
+	_draw_prisms()
 	_draw_mirrors()
 	_draw_sources()
 	if _hovered_cell.x >= 0:
@@ -86,7 +91,8 @@ func _draw_targets() -> void:
 		var c := _cell_center(pos)
 		var hit := _hit_targets.has(pos)
 		var r := cell_size * 0.3
-		var col := C_TARGET if hit else C_TARGET_DIM
+		var base_col: Color = targets[pos]["color"]
+		var col := base_col if hit else Color(base_col.r, base_col.g, base_col.b, 0.25)
 		# Ring
 		draw_arc(c, r, 0, TAU, 36, col, 3.0)
 		# Filled dot when hit
@@ -103,6 +109,26 @@ func _draw_mirrors() -> void:
 			draw_line(c + Vector2(-h, h), c + Vector2(h, -h), C_MIRROR, 4.0)
 		else:            # "\"
 			draw_line(c + Vector2(-h, -h), c + Vector2(h, h), C_MIRROR, 4.0)
+
+
+func _draw_prisms() -> void:
+	for pos in prisms:
+		var orient: int = int(prisms[pos])
+		var c := _cell_center(pos)
+		var s := cell_size * 0.3
+		# Triangle — the classic prism shape. Orientation flips it vertically.
+		var pts := PackedVector2Array()
+		if orient == 0:
+			pts.append(c + Vector2(0, -s))
+			pts.append(c + Vector2(-s, s))
+			pts.append(c + Vector2(s, s))
+		else:
+			pts.append(c + Vector2(0, s))
+			pts.append(c + Vector2(-s, -s))
+			pts.append(c + Vector2(s, -s))
+		draw_colored_polygon(pts, Color(C_PRISM.r, C_PRISM.g, C_PRISM.b, 0.25))
+		for i in range(3):
+			draw_line(pts[i], pts[(i + 1) % 3], C_PRISM, 2.5)
 
 
 func _draw_sources() -> void:
@@ -130,7 +156,12 @@ func _draw_hover() -> void:
 		return
 	var c := _cell_center(_hovered_cell)
 	var s := cell_size * 0.92
-	draw_rect(Rect2(c.x - s / 2.0, c.y - s / 2.0, s, s), C_HOVER, true)
+	var col: Color = C_HOVER
+	if active_tool == 1:
+		col = Color(C_PRISM.r, C_PRISM.g, C_PRISM.b, 0.1)
+	else:
+		col = Color(C_MIRROR.r, C_MIRROR.g, C_MIRROR.b, 0.1)
+	draw_rect(Rect2(c.x - s / 2.0, c.y - s / 2.0, s, s), col, true)
 
 
 # ── Public API ───────────────────────────────────────────────────────────────
@@ -169,12 +200,18 @@ func _unhandled_input(event: InputEvent) -> void:
 			MOUSE_BUTTON_RIGHT:
 				_remove(gp)
 
-	elif event is InputEventKey and event.pressed and event.keycode == KEY_R:
-		if mirrors.has(_hovered_cell):
-			var current: int = int(mirrors[_hovered_cell])
-			mirrors[_hovered_cell] = 1 - current
-			tools_changed.emit()
-			queue_redraw()
+	elif event is InputEventKey and event.pressed:
+		match event.keycode:
+			KEY_1:
+				active_tool = 0
+				tools_changed.emit()
+				queue_redraw()
+			KEY_2:
+				active_tool = 1
+				tools_changed.emit()
+				queue_redraw()
+			KEY_R:
+				_rotate_hovered()
 
 
 func _place_or_toggle(gp: Vector2i) -> void:
@@ -182,23 +219,52 @@ func _place_or_toggle(gp: Vector2i) -> void:
 	if targets.has(gp) or blockers.has(gp) or _is_source(gp):
 		return
 
+	# If a tool is already here, toggle its orientation
 	if mirrors.has(gp):
-		# Toggle orientation
-		var current: int = int(mirrors[gp])
-		mirrors[gp] = 1 - current
-	else:
-		# Place new — check budget
+		mirrors[gp] = 1 - int(mirrors[gp])
+		tools_changed.emit()
+		queue_redraw()
+		return
+	if prisms.has(gp):
+		prisms[gp] = 1 - int(prisms[gp])
+		tools_changed.emit()
+		queue_redraw()
+		return
+
+	# Place new tool of the active type
+	if active_tool == 0:  # Mirror
 		if mirrors.size() >= mirror_budget:
 			return
 		mirrors[gp] = 0
+	elif active_tool == 1:  # Prism
+		if prisms.size() >= prism_budget:
+			return
+		prisms[gp] = 0
 
 	tools_changed.emit()
 	queue_redraw()
 
 
 func _remove(gp: Vector2i) -> void:
+	var changed := false
 	if mirrors.has(gp):
 		mirrors.erase(gp)
+		changed = true
+	if prisms.has(gp):
+		prisms.erase(gp)
+		changed = true
+	if changed:
+		tools_changed.emit()
+		queue_redraw()
+
+
+func _rotate_hovered() -> void:
+	if mirrors.has(_hovered_cell):
+		mirrors[_hovered_cell] = 1 - int(mirrors[_hovered_cell])
+		tools_changed.emit()
+		queue_redraw()
+	elif prisms.has(_hovered_cell):
+		prisms[_hovered_cell] = 1 - int(prisms[_hovered_cell])
 		tools_changed.emit()
 		queue_redraw()
 
