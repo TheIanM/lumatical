@@ -1,32 +1,43 @@
-# Task List — Lens Tool & Intensity System
+# Task List — Enemies & Obstacles
 
 ## Goal
-Implement the Lens — the last of the 6 core GDD tools. Adds the intensity
-dimension: convex lenses focus beams (stronger), concave spread them (weaker).
-Targets can now require a minimum intensity to activate.
+Implement the three GDD enemy types as puzzle elements, then add puzzles
+that use them. This is Phase II content from the roadmap.
 
-## Design Decision
-In our cardinal-direction grid, "bending by a fixed angle" (the GDD's lens
-description) doesn't add anything mirrors don't already cover. The interesting
-and unique mechanic is intensity modification:
-- Convex (orientation 0): beam passes through, intensity ×1.5
-- Concave (orientation 1): beam passes through, intensity ×0.5
-- Targets can optionally specify "intensity" (minimum needed to activate)
+## Enemy Designs (from GDD)
 
-This creates puzzles where split beams (at 0.5 intensity) must be focused
-through a convex lens to reach a target that requires full intensity.
+### Shadow Block
+- Occupies a cell, absorbs any beam below its intensity threshold
+- Destroyed by a beam with intensity >= threshold (default 0.75)
+- Teaches the intensity dimension — split beams (0.5i) need a convex lens
+- Visual: dark hexagon with pulsing glow
+
+### Chromatic Shade
+- Has a color (e.g., RED). Absorbs non-matching colors
+- Destroyed by matching color beam — then cell is clear for all beams
+- Teaches color-based obstacle removal
+- Visual: ghostly translucent shape in its vulnerability color
+
+### Null Emitter
+- Creates a 3x3 dead zone that cancels all beams entering it
+- Cannot be destroyed (for now — GDD describes a timing cycle, deferred)
+- Forces routing around its area of effect
+- Visual: dark circle with radiating field
+
+## Key Implementation Detail
+Enemies are "destroyed" within a single simulation pass. The first beam
+to reach an enemy with the right property (intensity/color) destroys it,
+allowing subsequent beams to pass through. This is tracked in
+SimResult.destroyed_enemies.
 
 ## Steps
-1. BeamSimulator: add lens handling + intensity-gated targets
-   → verify: lens modifies intensity, targets check intensity threshold
-2. Grid: add lens state, drawing, placement, input (KEY_5)
-   → verify: can place/toggle/remove lenses
-3. Main: add lens_budget, toolbelt entry, tool dict, new puzzles
-   → verify: puzzles are solvable
-4. Run project end-to-end → verify: all puzzles playable
+1. BeamSimulator: add enemy types + null zone precomputation
+2. Grid: add enemy state, drawing, destroyed feedback
+3. Main: enemy data in levels, tools dict, 5 new puzzles (11-15)
+4. Test end-to-end
 
 ## Status
-- [x] BeamSimulator lens + intensity targets
-- [x] Grid lens support
-- [x] Main lens levels + toolbelt
+- [x] BeamSimulator enemy handling
+- [x] Grid enemy drawing
+- [x] Main enemy levels
 - [x] End-to-end test

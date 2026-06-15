@@ -39,6 +39,7 @@ class BeamSegment:
 class SimResult:
 	var segments: Array = []
 	var hit_targets: Array = []
+	var destroyed_enemies: Dictionary = {}  # pos -> true
 
 
 ## Maximum reflections per beam before giving up (prevents infinite loops).
@@ -62,6 +63,9 @@ const MIN_INTENSITY := 0.05
 ##   - Filter:  {"type": "filter", "color": Color}
 ##   - Splitter:{"type": "splitter", "orientation": 0|1}
 ##   - Lens:    {"type": "lens", "orientation": 0|1}  (0=convex/focus, 1=concave/spread)
+##   - ShadowBlock: {"type": "shadow_block", "threshold": float}
+##   - ChromShade:  {"type": "chromatic_shade", "color": Color}
+##   - NullEmitter: {"type": "null_emitter"}
 ##   - Target:  {"type": "target", "color": Color, "intensity": float (optional min)}
 ##   - Blocker: {"type": "blocker"}
 ## [param sources] Array of source dicts:
@@ -75,6 +79,15 @@ static func simulate(
 	cell_size: float,
 ) -> SimResult:
 	var result := SimResult.new()
+
+	# Precompute null emitter dead zones (3x3 area around each emitter)
+	var null_zones: Dictionary = {}
+	for pos in tools:
+		if tools[pos].get("type", "") == "null_emitter":
+			for dx in range(-1, 2):
+				for dy in range(-1, 2):
+					null_zones[pos + Vector2i(dx, dy)] = true
+
 	var queue: Array = []
 
 	for source in sources:
@@ -89,7 +102,7 @@ static func simulate(
 		var beam: Dictionary = queue.pop_front()
 		if beam["intensity"] < MIN_INTENSITY:
 			continue
-		_trace_single_beam(grid_size, tools, beam, cell_size, result, queue)
+		_trace_single_beam(grid_size, tools, beam, cell_size, result, queue, null_zones)
 
 	return result
 
@@ -104,6 +117,7 @@ static func _trace_single_beam(
 	cell_size: float,
 	result: SimResult,
 	queue: Array,
+	null_zones: Dictionary,
 ) -> void:
 	var pos: Vector2i = beam["pos"]
 	var direction: Vector2i = beam["direction"]
@@ -118,6 +132,17 @@ static func _trace_single_beam(
 
 		# Beam has left the grid
 		if not _in_bounds(next_pos, grid_size):
+			if segment_start != pos:
+				result.segments.append(BeamSegment.new(
+					_to_world(segment_start, cell_size),
+					_to_world(pos, cell_size),
+					beam_color,
+					intensity,
+				))
+			return
+
+		# Null emitter dead zone — beam cancelled before reaching anything
+		if null_zones.has(next_pos):
 			if segment_start != pos:
 				result.segments.append(BeamSegment.new(
 					_to_world(segment_start, cell_size),
@@ -198,6 +223,28 @@ static func _trace_single_beam(
 							result.hit_targets.append(next_pos)
 					return
 				"blocker":
+					return
+				"shadow_block":
+					if result.destroyed_enemies.has(next_pos):
+						pos = next_pos
+						segment_start = next_pos
+					elif intensity >= float(tool.get("threshold", 0.75)):
+						result.destroyed_enemies[next_pos] = true
+						pos = next_pos
+						segment_start = next_pos
+					else:
+						return
+				"chromatic_shade":
+					if result.destroyed_enemies.has(next_pos):
+						pos = next_pos
+						segment_start = next_pos
+					elif _colors_match(beam_color, tool["color"]):
+						result.destroyed_enemies[next_pos] = true
+						pos = next_pos
+						segment_start = next_pos
+					else:
+						return
+				"null_emitter":
 					return
 				_:
 					pos = next_pos

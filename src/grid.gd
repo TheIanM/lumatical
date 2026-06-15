@@ -19,6 +19,11 @@ var sources: Array = []
 var targets: Dictionary = {}   # Vector2i -> {"color": Color}
 var blockers: Array = []
 
+# Enemy elements (fixed, set by controller)
+var shadow_blocks: Array = []     # [{"pos": Vector2i, "threshold": float}]
+var chromatic_shades: Array = []  # [{"pos": Vector2i, "color": Color}]
+var null_emitters: Array = []    # [Vector2i, ...]
+
 # Player-placed tools
 var mirrors: Dictionary = {}   # Vector2i -> int (0="/", 1="\")
 var prisms: Dictionary = {}    # Vector2i -> int (0=default, 1=flipped)
@@ -39,6 +44,7 @@ var active_tool: int = 0
 
 # Runtime — updated by the controller after simulation
 var _hit_targets: Dictionary = {}
+var _destroyed_enemies: Dictionary = {}
 
 # Mouse tracking
 var _hovered_cell := Vector2i(-1, -1)
@@ -54,6 +60,10 @@ const C_FILTER := Color(1.0, 0.9, 0.0)           # #ffe600 neon yellow
 const C_SPLITTER := Color(1.0, 0.53, 0.0)        # #ff8800 neon orange
 const C_LENS := Color(0.67, 0.4, 1.0)            # #aa66ff neon violet
 const C_BLOCKER := Color(0.18, 0.18, 0.22)
+const C_SHADOW := Color(0.12, 0.05, 0.15)         # Dark purple-black
+const C_SHADE := Color(0.4, 0.4, 0.55, 0.25)      # Ghostly neutral
+const C_NULL := Color(0.08, 0.0, 0.12)            # Deep void
+const C_NULL_FIELD := Color(0.02, 0.0, 0.04, 0.35) # Dead zone overlay
 const C_HOVER := Color(1, 1, 1, 0.06)
 
 var _time: float = 0.0
@@ -81,7 +91,11 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	_draw_grid_lines()
+	_draw_null_fields()
 	_draw_blockers()
+	_draw_shadow_blocks()
+	_draw_chromatic_shades()
+	_draw_null_emitters()
 	_draw_targets()
 	_draw_splitters()
 	_draw_lenses()
@@ -120,6 +134,71 @@ func _draw_blockers() -> void:
 		draw_rect(Rect2(c.x - s / 2.0, c.y - s / 2.0, s, s), C_BLOCKER, true)
 		# Subtle red-tinged border — feels ominous
 		draw_rect(Rect2(c.x - s / 2.0, c.y - s / 2.0, s, s), Color(0.3, 0.1, 0.12, 0.6), false, 1.5)
+
+
+func _draw_shadow_blocks() -> void:
+	for sb in shadow_blocks:
+		var pos: Vector2i = sb["pos"]
+		var c := _cell_center(pos)
+		var s := cell_size * 0.32
+		var destroyed := _destroyed_enemies.has(pos)
+		var alpha := 0.15 if destroyed else 1.0
+		var pulse := 0.7 + sin(_time * 1.5) * 0.3
+		# Hexagon shape — distinct from square blockers
+		var pts := PackedVector2Array()
+		for i in range(6):
+			var angle := TAU * i / 6.0 - PI / 2.0
+			pts.append(c + Vector2(cos(angle), sin(angle)) * s)
+		if not destroyed:
+			draw_colored_polygon(pts, Color(C_SHADOW.r, C_SHADOW.g, C_SHADOW.b, 0.7))
+			for i in range(6):
+				draw_line(pts[i], pts[(i + 1) % 6], Color(0.5, 0.2, 0.6, 0.8), 2.0)
+			# Pulsing intensity indicator in center
+			draw_circle(c, s * 0.35 * pulse, Color(0.7, 0.3, 0.8, 0.15))
+		else:
+			# Faint outline — destroyed
+			for i in range(6):
+				draw_line(pts[i], pts[(i + 1) % 6], Color(0.3, 0.15, 0.35, alpha * 0.3), 1.0)
+
+
+func _draw_chromatic_shades() -> void:
+	for cs in chromatic_shades:
+		var pos: Vector2i = cs["pos"]
+		var col: Color = cs["color"]
+		var c := _cell_center(pos)
+		var r := cell_size * 0.3
+		var destroyed := _destroyed_enemies.has(pos)
+		if destroyed:
+			# Faint ghost outline
+			draw_arc(c, r, 0, TAU, 24, Color(col.r, col.g, col.b, 0.15), 1.0)
+		else:
+			# Ghostly translucent shape in its vulnerability color
+			var pulse := 0.6 + sin(_time * 1.8) * 0.15
+			draw_circle(c, r * 1.3, Color(col.r, col.g, col.b, 0.04 * pulse))
+			draw_circle(c, r, Color(col.r, col.g, col.b, 0.12 * pulse))
+			draw_arc(c, r, 0, TAU, 24, Color(col.r, col.g, col.b, 0.5), 2.0)
+
+
+func _draw_null_emitters() -> void:
+	for pos in null_emitters:
+		var c := _cell_center(pos)
+		var r := cell_size * 0.22
+		var pulse := 0.7 + sin(_time * 2.0) * 0.15
+		# Dark core
+		draw_circle(c, r * pulse, C_NULL)
+		# Radiating dark ring
+		draw_arc(c, r * 1.8 * pulse, 0, TAU, 24, Color(0.1, 0.0, 0.15, 0.5), 2.0)
+
+
+func _draw_null_fields() -> void:
+	# Draw dead zone overlay for each null emitter (3x3 area)
+	for pos in null_emitters:
+		var cx: float = (pos.x - 0.5) * cell_size
+		var cy: float = (pos.y - 0.5) * cell_size
+		var s := cell_size * 3.0
+		var pulse := 0.7 + sin(_time * 1.5) * 0.15
+		var col := Color(C_NULL_FIELD.r, C_NULL_FIELD.g, C_NULL_FIELD.b, C_NULL_FIELD.a * pulse)
+		draw_rect(Rect2(cx, cy, s, s), col, true)
 
 
 func _draw_targets() -> void:
@@ -278,6 +357,12 @@ func set_hit_targets(arr: Array) -> void:
 	_hit_targets.clear()
 	for pos in arr:
 		_hit_targets[pos] = true
+	queue_redraw()
+
+
+## Called by the controller after simulation to mark destroyed enemies.
+func set_destroyed_enemies(d: Dictionary) -> void:
+	_destroyed_enemies = d.duplicate()
 	queue_redraw()
 
 

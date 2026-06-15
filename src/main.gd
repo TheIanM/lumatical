@@ -136,6 +136,69 @@ const LEVELS := [
 		"prism_budget": 1,
 		"lens_budget": 1,
 	},
+	# ── Chapter IV: Enemies ──
+	# Puzzle 11: Shadow block — weak source needs a convex lens to break through.
+	{
+		"name": "Shadow",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 0.5}],
+		"targets": {Vector2i(10, 4): {"color": BEAM_COLOR}},
+		"blockers": [],
+		"shadow_blocks": [{"pos": Vector2i(6, 4), "threshold": 0.75}],
+		"mirror_budget": 0,
+		"lens_budget": 1,
+	},
+	# Puzzle 12: Spectre — chromatic shade blocks the green beam's path.
+	{
+		"name": "Spectre",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": C_GREEN},
+			Vector2i(10, 1): {"color": C_RED},
+		},
+		"blockers": [],
+		"chromatic_shades": [{"pos": Vector2i(6, 4), "color": C_GREEN}],
+		"mirror_budget": 1,
+		"prism_budget": 1,
+	},
+	# Puzzle 13: Void — null emitter forces a detour around its dead zone.
+	{
+		"name": "Void",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {Vector2i(10, 6): {"color": BEAM_COLOR}},
+		"blockers": [],
+		"null_emitters": [Vector2i(6, 3)],
+		"mirror_budget": 2,
+	},
+	# Puzzle 14: Gauntlet — shadow block + prism. Split beams stay at full
+	# intensity (unlike splitter), so prism beams can break through.
+	{
+		"name": "Gauntlet",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": C_GREEN},
+			Vector2i(10, 1): {"color": C_RED},
+			Vector2i(10, 7): {"color": C_BLUE},
+		},
+		"blockers": [],
+		"shadow_blocks": [{"pos": Vector2i(7, 4), "threshold": 0.75}],
+		"mirror_budget": 2,
+		"prism_budget": 1,
+	},
+	# Puzzle 15: Convergence — shadow block + chromatic shade + prism.
+	{
+		"name": "Convergence",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": C_GREEN},
+			Vector2i(10, 1): {"color": C_RED},
+			Vector2i(10, 7): {"color": C_BLUE},
+		},
+		"blockers": [],
+		"shadow_blocks": [{"pos": Vector2i(7, 4), "threshold": 0.75}],
+		"chromatic_shades": [{"pos": Vector2i(7, 7), "color": C_BLUE}],
+		"mirror_budget": 2,
+		"prism_budget": 1,
+	},
 ]
 
 var _current_level := 0
@@ -306,6 +369,9 @@ func _load_level(index: int) -> void:
 	grid.sources = level["sources"].duplicate(true)
 	grid.targets = level["targets"].duplicate(true)
 	grid.blockers = level["blockers"].duplicate(true)
+	grid.shadow_blocks = level.get("shadow_blocks", []).duplicate(true)
+	grid.chromatic_shades = level.get("chromatic_shades", []).duplicate(true)
+	grid.null_emitters = level.get("null_emitters", []).duplicate(true)
 	grid.mirror_budget = level["mirror_budget"]
 	grid.prism_budget = level.get("prism_budget", 0)
 	grid.filter_budget = level.get("filter_budget", 0)
@@ -317,6 +383,7 @@ func _load_level(index: int) -> void:
 	grid.filters.clear()
 	grid.splitters.clear()
 	grid.lenses.clear()
+	grid._destroyed_enemies.clear()
 	grid.queue_redraw()
 
 	status_label.remove_theme_color_override("font_color")
@@ -343,6 +410,7 @@ func _run_simulation() -> void:
 
 	beam_layer.set_segments(result.segments)
 	grid.set_hit_targets(result.hit_targets)
+	grid.set_destroyed_enemies(result.destroyed_enemies)
 
 	# Win detection — show overlay on transition to solved
 	var was_solved := _solved
@@ -362,6 +430,12 @@ func _build_tools_dict() -> Dictionary:
 		d[pos] = tdata
 	for pos in grid.blockers:
 		d[pos] = {"type": "blocker"}
+	for sb in grid.shadow_blocks:
+		d[sb["pos"]] = {"type": "shadow_block", "threshold": float(sb.get("threshold", 0.75))}
+	for cs in grid.chromatic_shades:
+		d[cs["pos"]] = {"type": "chromatic_shade", "color": cs["color"]}
+	for pos in grid.null_emitters:
+		d[pos] = {"type": "null_emitter"}
 	for pos in grid.mirrors:
 		d[pos] = {"type": "mirror", "orientation": int(grid.mirrors[pos])}
 	for pos in grid.prisms:
