@@ -199,6 +199,76 @@ const LEVELS := [
 		"mirror_budget": 2,
 		"prism_budget": 1,
 	},
+	# ── Chapter V: Advanced Combinations ──
+	# Puzzle 16: Sieve + shade — filter a color, then destroy a shade with it.
+	{
+		"name": "Purge",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {Vector2i(10, 4): {"color": C_RED}},
+		"blockers": [],
+		"chromatic_shades": [{"pos": Vector2i(7, 4), "color": C_RED}],
+		"mirror_budget": 0,
+		"filter_budget": 1,
+	},
+	# Puzzle 17: Split + focus — splitter halves the beam, lens restores it,
+	# then it breaks through a shadow block to reach one target.
+	# The other split beam reaches a second target directly.
+	{
+		"name": "Amplify",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": BEAM_COLOR},
+			Vector2i(10, 1): {"color": BEAM_COLOR},
+		},
+		"blockers": [],
+		"shadow_blocks": [{"pos": Vector2i(8, 4), "threshold": 0.75}],
+		"mirror_budget": 1,
+		"splitter_budget": 1,
+		"lens_budget": 1,
+	},
+	# Puzzle 18: Corridor — null emitter blocks direct path, requiring a detour.
+	{
+		"name": "Corridor",
+		"sources": [{"pos": Vector2i(3, 1), "direction": Vector2i(0, 1), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {Vector2i(5, 7): {"color": BEAM_COLOR}},
+		"blockers": [],
+		"null_emitters": [Vector2i(3, 4)],
+		"mirror_budget": 2,
+	},
+	# Puzzle 19: Color gauntlet — three shades block three colored paths.
+	{
+		"name": "Spectrum Run",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 1): {"color": C_RED},
+			Vector2i(10, 4): {"color": C_GREEN},
+			Vector2i(10, 7): {"color": C_BLUE},
+		},
+		"blockers": [],
+		"chromatic_shades": [
+			{"pos": Vector2i(7, 1), "color": C_RED},
+			{"pos": Vector2i(7, 4), "color": C_GREEN},
+			{"pos": Vector2i(7, 7), "color": C_BLUE},
+		],
+		"mirror_budget": 2,
+		"prism_budget": 1,
+	},
+	# Puzzle 20: Masterwork — prism + splitter + lens + intensity target.
+	# The culmination: split white into green, split the green beam, focus one
+	# half to meet an intensity-gated target, route the other to a plain target.
+	{
+		"name": "Masterwork",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": C_GREEN, "intensity": 0.75},
+			Vector2i(10, 7): {"color": C_GREEN},
+		},
+		"blockers": [],
+		"mirror_budget": 1,
+		"prism_budget": 1,
+		"splitter_budget": 1,
+		"lens_budget": 1,
+	},
 ]
 
 var _current_level := 0
