@@ -17,5 +17,6 @@ data_*/
 mono_crash.*.json
 
 #crush
-crush.json 
+crush.json
 AGENTS.md
+.crush/
