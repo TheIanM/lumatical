@@ -309,6 +309,7 @@ func _ready() -> void:
 
 	_create_overlay()
 	_create_toolbelt()
+	_create_top_bar()
 	_load_level(0)
 
 
@@ -393,6 +394,21 @@ func _create_toolbelt() -> void:
 		btn.pressed.connect(_on_toolbelt_button.bind(i))
 		_toolbelt.add_child(btn)
 		_tool_buttons.append(btn)
+
+
+func _create_top_bar() -> void:
+	var ui: CanvasLayer = $UI
+	var editor_btn := Button.new()
+	editor_btn.text = "Level Editor"
+	editor_btn.add_theme_font_size_override("font_size", 13)
+	editor_btn.custom_minimum_size = Vector2(130, 32)
+	editor_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	editor_btn.offset_left = -146
+	editor_btn.offset_top = 12
+	editor_btn.offset_right = -8
+	editor_btn.offset_bottom = 44
+	editor_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Editor.tscn"))
+	ui.add_child(editor_btn)
 
 
 func _update_toolbelt() -> void:

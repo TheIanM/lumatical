@@ -1,43 +1,32 @@
-# Task List — Enemies & Obstacles
+# Task List — Level Editor
 
 ## Goal
-Implement the three GDD enemy types as puzzle elements, then add puzzles
-that use them. This is Phase II content from the roadmap.
+Build a level editor with solution-first validation per the GDD.
 
-## Enemy Designs (from GDD)
-
-### Shadow Block
-- Occupies a cell, absorbs any beam below its intensity threshold
-- Destroyed by a beam with intensity >= threshold (default 0.75)
-- Teaches the intensity dimension — split beams (0.5i) need a convex lens
-- Visual: dark hexagon with pulsing glow
-
-### Chromatic Shade
-- Has a color (e.g., RED). Absorbs non-matching colors
-- Destroyed by matching color beam — then cell is clear for all beams
-- Teaches color-based obstacle removal
-- Visual: ghostly translucent shape in its vulnerability color
-
-### Null Emitter
-- Creates a 3x3 dead zone that cancels all beams entering it
-- Cannot be destroyed (for now — GDD describes a timing cycle, deferred)
-- Forces routing around its area of effect
-- Visual: dark circle with radiating field
-
-## Key Implementation Detail
-Enemies are "destroyed" within a single simulation pass. The first beam
-to reach an enemy with the right property (intensity/color) destroys it,
-allowing subsequent beams to pass through. This is tracked in
-SimResult.destroyed_enemies.
+## Design
+The editor is a separate scene (Editor.tscn) that lets you:
+1. Place fixed elements: sources, targets, blockers, enemies
+2. Place "solution" tools to prove the puzzle is solvable
+3. Hit Validate — runs BeamSimulator, confirms all targets are hit
+4. Export — saves the puzzle as JSON (tools stripped, budgets derived from solution)
+5. Play-test — toggle to game mode to try solving it yourself
 
 ## Steps
-1. BeamSimulator: add enemy types + null zone precomputation
-2. Grid: add enemy state, drawing, destroyed feedback
-3. Main: enemy data in levels, tools dict, 5 new puzzles (11-15)
-4. Test end-to-end
+1. PuzzleSerializer: convert between LEVELS dict format and JSON files
+   → verify: can save/load existing puzzles round-trip
+2. Editor grid: place/edit all element types with a palette UI
+   → verify: can build a puzzle from scratch
+3. Validator: run sim on solution config, report which targets are hit
+   → verify: green check when all hit, red X with details when not
+4. Export: derive budgets from solution tools, save JSON
+   → verify: exported puzzle loads and plays correctly
+5. Scene switching: Main menu → Editor → Playtest
+   → verify: full round-trip works
 
 ## Status
-- [x] BeamSimulator enemy handling
-- [x] Grid enemy drawing
-- [x] Main enemy levels
-- [x] End-to-end test
+- [x] PuzzleSerializer (JSON save/load)
+- [x] Editor scene + grid + palette
+- [x] Validator (solution-first)
+- [x] Export with budget derivation
+- [x] Play-test toggle
+- [x] Scene switching
