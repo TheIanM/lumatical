@@ -37,3 +37,8 @@ separation." Our grid uses cardinal directions only (up/down/left/right), so
 - [x] Grid prism support
 - [x] Main prism levels
 - [x] End-to-end test
+- [x] Color Filter tool (simulator + grid + puzzle 6)
+- [x] Beam Splitter tool (simulator + grid + puzzles 7-8)
+- [ ] Toolbelt UI (suggestions.md item 1)
+- [ ] clear_mirrors rename (suggestions.md item 2)
+- [ ] Solve overlay color (suggestions.md item 3)

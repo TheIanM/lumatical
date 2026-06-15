@@ -22,12 +22,17 @@ var blockers: Array = []
 # Player-placed tools
 var mirrors: Dictionary = {}   # Vector2i -> int (0="/", 1="\")
 var prisms: Dictionary = {}    # Vector2i -> int (0=default, 1=flipped)
+var filters: Dictionary = {}   # Vector2i -> int color index (0=R, 1=G, 2=B)
+var splitters: Dictionary = {} # Vector2i -> int (0=split-right, 1=split-left)
 
 # How many of each tool the player is allowed to place
 var mirror_budget: int = 2
 var prism_budget: int = 0
+var filter_budget: int = 0
+var splitter_budget: int = 0
 
-# Currently selected tool for placement (0=mirror, 1=prism)
+# Currently selected tool for placement
+# 0=mirror, 1=prism, 2=filter, 3=splitter
 var active_tool: int = 0
 
 # Runtime — updated by the controller after simulation
@@ -43,8 +48,17 @@ const C_SOURCE := Color(0.91, 0.91, 1.0)          # #e8e8ff neon white
 const C_SOURCE_GLOW := Color(0.91, 0.91, 1.0, 0.15)
 const C_MIRROR := Color(0.0, 0.94, 1.0)           # #00f0ff neon cyan
 const C_PRISM := Color(1.0, 0.0, 0.9)             # #ff00e5 neon magenta
+const C_FILTER := Color(1.0, 0.9, 0.0)           # #ffe600 neon yellow
+const C_SPLITTER := Color(1.0, 0.53, 0.0)        # #ff8800 neon orange
 const C_BLOCKER := Color(0.18, 0.18, 0.22)
 const C_HOVER := Color(1, 1, 1, 0.06)
+
+# Filter colors — indexed by the int stored in `filters`
+const FILTER_COLORS := [
+	Color(1.0, 0.2, 0.33),   # RED
+	Color(0.0, 1.0, 0.53),   # GREEN
+	Color(0.27, 0.4, 1.0),   # BLUE
+]
 
 
 # ── Lifecycle ────────────────────────────────────────────────────────────────
@@ -59,6 +73,8 @@ func _draw() -> void:
 	_draw_grid_lines()
 	_draw_blockers()
 	_draw_targets()
+	_draw_splitters()
+	_draw_filters()
 	_draw_prisms()
 	_draw_mirrors()
 	_draw_sources()
@@ -131,6 +147,41 @@ func _draw_prisms() -> void:
 			draw_line(pts[i], pts[(i + 1) % 3], C_PRISM, 2.5)
 
 
+func _draw_filters() -> void:
+	for pos in filters:
+		var color_idx: int = int(filters[pos])
+		var c := _cell_center(pos)
+		var s := cell_size * 0.35
+		var col: Color = FILTER_COLORS[color_idx]
+		# Two vertical bars representing a color filter slab
+		draw_rect(
+			Rect2(c.x - s * 0.35, c.y - s, s * 0.7, s * 2.0),
+			Color(col.r, col.g, col.b, 0.25), true)
+		draw_rect(
+			Rect2(c.x - s * 0.35, c.y - s, s * 0.7, s * 2.0),
+			col, false, 2.5)
+
+
+func _draw_splitters() -> void:
+	for pos in splitters:
+		var orient: int = int(splitters[pos])
+		var c := _cell_center(pos)
+		var s := cell_size * 0.3
+		# Diamond shape — visually distinct from mirrors and prisms
+		var pts := PackedVector2Array([
+			c + Vector2(0, -s),
+			c + Vector2(s, 0),
+			c + Vector2(0, s),
+			c + Vector2(-s, 0),
+		])
+		draw_colored_polygon(pts, Color(C_SPLITTER.r, C_SPLITTER.g, C_SPLITTER.b, 0.25))
+		for i in range(4):
+			draw_line(pts[i], pts[(i + 1) % 4], C_SPLITTER, 2.0)
+		# Arrow indicating split direction
+		var arrow_y := s * 0.3 if orient == 0 else -s * 0.3
+		draw_line(c, c + Vector2(0, arrow_y), C_SPLITTER, 1.5)
+
+
 func _draw_sources() -> void:
 	for src in sources:
 		var c := _cell_center(src["pos"])
@@ -156,12 +207,14 @@ func _draw_hover() -> void:
 		return
 	var c := _cell_center(_hovered_cell)
 	var s := cell_size * 0.92
-	var col: Color = C_HOVER
-	if active_tool == 1:
-		col = Color(C_PRISM.r, C_PRISM.g, C_PRISM.b, 0.1)
-	else:
-		col = Color(C_MIRROR.r, C_MIRROR.g, C_MIRROR.b, 0.1)
-	draw_rect(Rect2(c.x - s / 2.0, c.y - s / 2.0, s, s), col, true)
+	var base: Color
+	match active_tool:
+		0: base = C_MIRROR
+		1: base = C_PRISM
+		2: base = C_FILTER
+		3: base = C_SPLITTER
+		_: base = Color(1, 1, 1)
+	draw_rect(Rect2(c.x - s / 2.0, c.y - s / 2.0, s, s), Color(base.r, base.g, base.b, 0.1), true)
 
 
 # ── Public API ───────────────────────────────────────────────────────────────
@@ -210,6 +263,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				active_tool = 1
 				tools_changed.emit()
 				queue_redraw()
+			KEY_3:
+				active_tool = 2
+				tools_changed.emit()
+				queue_redraw()
+			KEY_4:
+				active_tool = 3
+				tools_changed.emit()
+				queue_redraw()
 			KEY_R:
 				_rotate_hovered()
 
@@ -219,7 +280,7 @@ func _place_or_toggle(gp: Vector2i) -> void:
 	if targets.has(gp) or blockers.has(gp) or _is_source(gp):
 		return
 
-	# If a tool is already here, toggle its orientation
+	# If a tool is already here, toggle its orientation/color
 	if mirrors.has(gp):
 		mirrors[gp] = 1 - int(mirrors[gp])
 		tools_changed.emit()
@@ -230,16 +291,36 @@ func _place_or_toggle(gp: Vector2i) -> void:
 		tools_changed.emit()
 		queue_redraw()
 		return
+	if filters.has(gp):
+		# Cycle filter color: R -> G -> B -> R
+		filters[gp] = (int(filters[gp]) + 1) % 3
+		tools_changed.emit()
+		queue_redraw()
+		return
+	if splitters.has(gp):
+		splitters[gp] = 1 - int(splitters[gp])
+		tools_changed.emit()
+		queue_redraw()
+		return
 
 	# Place new tool of the active type
-	if active_tool == 0:  # Mirror
-		if mirrors.size() >= mirror_budget:
-			return
-		mirrors[gp] = 0
-	elif active_tool == 1:  # Prism
-		if prisms.size() >= prism_budget:
-			return
-		prisms[gp] = 0
+	match active_tool:
+		0:  # Mirror
+			if mirrors.size() >= mirror_budget:
+				return
+			mirrors[gp] = 0
+		1:  # Prism
+			if prisms.size() >= prism_budget:
+				return
+			prisms[gp] = 0
+		2:  # Filter
+			if filters.size() >= filter_budget:
+				return
+			filters[gp] = 0
+		3:  # Splitter
+			if splitters.size() >= splitter_budget:
+				return
+			splitters[gp] = 0
 
 	tools_changed.emit()
 	queue_redraw()
@@ -253,6 +334,12 @@ func _remove(gp: Vector2i) -> void:
 	if prisms.has(gp):
 		prisms.erase(gp)
 		changed = true
+	if filters.has(gp):
+		filters.erase(gp)
+		changed = true
+	if splitters.has(gp):
+		splitters.erase(gp)
+		changed = true
 	if changed:
 		tools_changed.emit()
 		queue_redraw()
@@ -265,6 +352,14 @@ func _rotate_hovered() -> void:
 		queue_redraw()
 	elif prisms.has(_hovered_cell):
 		prisms[_hovered_cell] = 1 - int(prisms[_hovered_cell])
+		tools_changed.emit()
+		queue_redraw()
+	elif filters.has(_hovered_cell):
+		filters[_hovered_cell] = (int(filters[_hovered_cell]) + 1) % 3
+		tools_changed.emit()
+		queue_redraw()
+	elif splitters.has(_hovered_cell):
+		splitters[_hovered_cell] = 1 - int(splitters[_hovered_cell])
 		tools_changed.emit()
 		queue_redraw()
 

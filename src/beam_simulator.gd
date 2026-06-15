@@ -44,6 +44,10 @@ class SimResult:
 ## Maximum reflections per beam before giving up (prevents infinite loops).
 const MAX_BOUNCES := 50
 
+## Beams below this intensity are too weak to matter — dropped to prevent
+## infinite splitting chains (each splitter halves intensity).
+const MIN_INTENSITY := 0.05
+
 
 ## Run the beam simulation across the entire grid.
 ##
@@ -55,6 +59,8 @@ const MAX_BOUNCES := 50
 ##   Tool dict format:
 ##   - Mirror:  {"type": "mirror", "orientation": 0|1}  (0="/", 1="\")
 ##   - Prism:   {"type": "prism", "orientation": 0|1}
+##   - Filter:  {"type": "filter", "color": Color}
+##   - Splitter:{"type": "splitter", "orientation": 0|1}
 ##   - Target:  {"type": "target", "color": Color}
 ##   - Blocker: {"type": "blocker"}
 ## [param sources] Array of source dicts:
@@ -80,6 +86,8 @@ static func simulate(
 
 	while queue.size() > 0:
 		var beam: Dictionary = queue.pop_front()
+		if beam["intensity"] < MIN_INTENSITY:
+			continue
 		_trace_single_beam(grid_size, tools, beam, cell_size, result, queue)
 
 	return result
@@ -152,6 +160,27 @@ static func _trace_single_beam(
 						# Colored beam passes through unaffected
 						pos = next_pos
 						segment_start = next_pos
+				"filter":
+					var filter_color: Color = tool["color"]
+					if _is_white(beam_color):
+						# White light: only the filter's color passes through
+						beam_color = filter_color
+						pos = next_pos
+						segment_start = next_pos
+					elif _colors_match(beam_color, filter_color):
+						# Matching color: passes through unaffected
+						pos = next_pos
+						segment_start = next_pos
+					else:
+						# Non-matching: absorbed
+						return
+				"splitter":
+					var sp_orient: int = int(tool.get("orientation", 0))
+					var turn_dir := _turn_right(direction) if sp_orient == 0 else _turn_left(direction)
+					var half_i := intensity * 0.5
+					queue.append({"pos": next_pos, "direction": direction, "color": beam_color, "intensity": half_i})
+					queue.append({"pos": next_pos, "direction": turn_dir, "color": beam_color, "intensity": half_i})
+					return
 				"target":
 					# Target absorbs the beam; only counts as hit if color matches
 					if _colors_match(beam_color, tool["color"]):

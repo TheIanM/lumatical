@@ -69,6 +69,38 @@ const LEVELS := [
 		"mirror_budget": 2,
 		"prism_budget": 1,
 	},
+	# Puzzle 6: Filter and bend — extract blue from white, route around blocker.
+	{
+		"sources": [{"pos": Vector2i(1, 1), "direction": Vector2i(0, 1), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {Vector2i(10, 6): {"color": C_BLUE}},
+		"blockers": [Vector2i(1, 6)],
+		"mirror_budget": 2,
+		"prism_budget": 0,
+		"filter_budget": 1,
+	},
+	# Puzzle 7: Beam split — duplicate a beam to hit two targets.
+	{
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 1): {"color": BEAM_COLOR},
+			Vector2i(10, 4): {"color": BEAM_COLOR},
+		},
+		"blockers": [],
+		"mirror_budget": 1,
+		"splitter_budget": 1,
+	},
+	# Puzzle 8: Split decision — prism + splitter to reach two green targets.
+	{
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": C_GREEN},
+			Vector2i(10, 7): {"color": C_GREEN},
+		},
+		"blockers": [],
+		"mirror_budget": 1,
+		"prism_budget": 1,
+		"splitter_budget": 1,
+	},
 ]
 
 var _current_level := 0
@@ -168,8 +200,12 @@ func _load_level(index: int) -> void:
 	grid.blockers = level["blockers"].duplicate(true)
 	grid.mirror_budget = level["mirror_budget"]
 	grid.prism_budget = level.get("prism_budget", 0)
+	grid.filter_budget = level.get("filter_budget", 0)
+	grid.splitter_budget = level.get("splitter_budget", 0)
 	grid.mirrors.clear()
 	grid.prisms.clear()
+	grid.filters.clear()
+	grid.splitters.clear()
 	grid.queue_redraw()
 
 	status_label.remove_theme_color_override("font_color")
@@ -216,6 +252,10 @@ func _build_tools_dict() -> Dictionary:
 		d[pos] = {"type": "mirror", "orientation": int(grid.mirrors[pos])}
 	for pos in grid.prisms:
 		d[pos] = {"type": "prism", "orientation": int(grid.prisms[pos])}
+	for pos in grid.filters:
+		d[pos] = {"type": "filter", "color": Grid.FILTER_COLORS[int(grid.filters[pos])]}
+	for pos in grid.splitters:
+		d[pos] = {"type": "splitter", "orientation": int(grid.splitters[pos])}
 	return d
 
 
@@ -233,10 +273,15 @@ func _update_status() -> void:
 	var m_budget: int = LEVELS[_current_level]["mirror_budget"]
 	var p_used := grid.prisms.size()
 	var p_budget: int = LEVELS[_current_level].get("prism_budget", 0)
-	var tool_name := "Mirror" if grid.active_tool == 0 else "Prism"
-	status_label.text = "Puzzle %d/%d  |  Mirrors: %d/%d  Prisms: %d/%d  |  [1]Mirror [2]Prism  Active: %s  |  L-click:place R-click:remove R:rotate" % [
+	var f_used := grid.filters.size()
+	var f_budget: int = LEVELS[_current_level].get("filter_budget", 0)
+	var s_used := grid.splitters.size()
+	var s_budget: int = LEVELS[_current_level].get("splitter_budget", 0)
+	var tool_names := ["Mirror", "Prism", "Filter", "Splitter"]
+	var tool_name: String = tool_names[grid.active_tool]
+	status_label.text = "P%d/%d  M:%d/%d P:%d/%d F:%d/%d S:%d/%d  |  [1]Mir [2]Prism [3]Filter [4]Split  Active:%s  R:cycle" % [
 		_current_level + 1, LEVELS.size(),
-		m_used, m_budget, p_used, p_budget,
+		m_used, m_budget, p_used, p_budget, f_used, f_budget, s_used, s_budget,
 		tool_name,
 	]
 
