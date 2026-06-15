@@ -112,6 +112,7 @@ var _solved := false
 
 # Solve overlay nodes (created in code)
 var _overlay: ColorRect
+var _solve_title: Label
 var _next_button: Button
 
 # Toolbelt nodes
@@ -161,12 +162,12 @@ func _create_overlay() -> void:
 	vbox.add_theme_constant_override("separation", 24)
 	center.add_child(vbox)
 
-	var title := Label.new()
-	title.text = "◆ PUZZLE SOLVED ◆"
-	title.add_theme_font_size_override("font_size", 40)
-	title.add_theme_color_override("font_color", Color(0.0, 1.0, 0.53))
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(title)
+	_solve_title = Label.new()
+	_solve_title.text = "◆ PUZZLE SOLVED ◆"
+	_solve_title.add_theme_font_size_override("font_size", 40)
+	_solve_title.add_theme_color_override("font_color", Color(0.0, 1.0, 0.53))
+	_solve_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(_solve_title)
 
 	var subtitle := Label.new()
 	subtitle.text = "The grid ignites with color."
@@ -192,6 +193,7 @@ func _show_solve_overlay() -> void:
 		_next_button.text = "↻ Back to Puzzle 1"
 	else:
 		_next_button.text = "Next Puzzle →"
+	_solve_title.add_theme_color_override("font_color", _dominant_target_color())
 	_overlay.visible = true
 
 
@@ -333,6 +335,24 @@ func _check_win(hit_targets: Array) -> bool:
 		if not pos in hit_targets:
 			return false
 	return true
+
+
+## Returns the color to use for the solve overlay — the single target color
+## if all targets share one, or white (full spectrum) if they differ.
+func _dominant_target_color() -> Color:
+	var unique: Array = []
+	for pos in grid.targets:
+		var col: Color = grid.targets[pos]["color"]
+		var found := false
+		for existing in unique:
+			if existing.is_equal_approx(col):
+				found = true
+				break
+		if not found:
+			unique.append(col)
+	if unique.size() == 1:
+		return unique[0]
+	return BeamSimulator.WHITE
 
 
 func _update_status() -> void:
