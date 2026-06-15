@@ -1,44 +1,32 @@
-# Task List — Visual Polish (Waves-inspired aesthetic)
+# Task List — Lens Tool & Intensity System
 
 ## Goal
-Transform the flat prototype look into the neon-drenched, glow-heavy aesthetic
-described in the GDD and inspired by Waves: deep void, additive light bloom,
-drifting particles, and elements that feel alive.
+Implement the Lens — the last of the 6 core GDD tools. Adds the intensity
+dimension: convex lenses focus beams (stronger), concave spread them (weaker).
+Targets can now require a minimum intensity to activate.
 
-## Key Constraints
-- Renderer is `gl_compatibility` (no WorldEnvironment bloom/Glow post-process).
-- All glow must be faked via multi-pass additive drawing.
-- Must stay calm/atmospheric per GDD, not chaotic like Waves.
+## Design Decision
+In our cardinal-direction grid, "bending by a fixed angle" (the GDD's lens
+description) doesn't add anything mirrors don't already cover. The interesting
+and unique mechanic is intensity modification:
+- Convex (orientation 0): beam passes through, intensity ×1.5
+- Concave (orientation 1): beam passes through, intensity ×0.5
+- Targets can optionally specify "intensity" (minimum needed to activate)
+
+This creates puzzles where split beams (at 0.5 intensity) must be focused
+through a convex lens to reach a target that requires full intensity.
 
 ## Steps
-
-1. **BeamLayer: additive glow overhaul**
-   → CanvasItemMaterial with BLEND_MODE_ADD
-   → 5-layer glow (ultra-wide halo → bright core) with round caps
-   → Radial glow at segment endpoints (beam intersections feel hot)
-   → verify: overlapping beams create bright hotspots
-
-2. **Background system (new file)**
-   → Slowly drifting ambient particles (dust motes)
-   → Subtle animated radial gradient (breathing void)
-   → verify: background has depth and motion, never distracting
-
-3. **Grid: living elements**
-   → _process-driven animation (pulsing source glow, breathing grid)
-   → Source orb with pulsing aura
-   → verify: grid feels alive when idle
-
-4. **Hit-point flares**
-   → Radial burst where beams hit mirrors/prisms/targets
-   → verify: tool interactions have visual punch
-
-5. **Color & contrast pass**
-   → Deepen background, saturate beam colors
-   → verify: beams pop against the void
+1. BeamSimulator: add lens handling + intensity-gated targets
+   → verify: lens modifies intensity, targets check intensity threshold
+2. Grid: add lens state, drawing, placement, input (KEY_5)
+   → verify: can place/toggle/remove lenses
+3. Main: add lens_budget, toolbelt entry, tool dict, new puzzles
+   → verify: puzzles are solvable
+4. Run project end-to-end → verify: all puzzles playable
 
 ## Status
-- [x] BeamLayer additive glow
-- [x] Background particle system
-- [x] Grid animation
-- [x] Hit-point flares
-- [x] Color/contrast pass
+- [x] BeamSimulator lens + intensity targets
+- [x] Grid lens support
+- [x] Main lens levels + toolbelt
+- [x] End-to-end test

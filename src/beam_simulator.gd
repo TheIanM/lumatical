@@ -61,7 +61,8 @@ const MIN_INTENSITY := 0.05
 ##   - Prism:   {"type": "prism", "orientation": 0|1}
 ##   - Filter:  {"type": "filter", "color": Color}
 ##   - Splitter:{"type": "splitter", "orientation": 0|1}
-##   - Target:  {"type": "target", "color": Color}
+##   - Lens:    {"type": "lens", "orientation": 0|1}  (0=convex/focus, 1=concave/spread)
+##   - Target:  {"type": "target", "color": Color, "intensity": float (optional min)}
 ##   - Blocker: {"type": "blocker"}
 ## [param sources] Array of source dicts:
 ##   {"pos": Vector2i, "direction": Vector2i, "color": Color, "intensity": float}
@@ -181,10 +182,20 @@ static func _trace_single_beam(
 					queue.append({"pos": next_pos, "direction": direction, "color": beam_color, "intensity": half_i})
 					queue.append({"pos": next_pos, "direction": turn_dir, "color": beam_color, "intensity": half_i})
 					return
+				"lens":
+					var lens_orient: int = int(tool.get("orientation", 0))
+					# Convex (0): focuses beam — intensity ×1.5
+					# Concave (1): spreads beam — intensity ×0.5
+					intensity = intensity * (1.5 if lens_orient == 0 else 0.5)
+					pos = next_pos
+					segment_start = next_pos
 				"target":
 					# Target absorbs the beam; only counts as hit if color matches
+					# and intensity meets the target's minimum (if specified).
 					if _colors_match(beam_color, tool["color"]):
-						result.hit_targets.append(next_pos)
+						var min_i: float = float(tool.get("intensity", 0.0))
+						if intensity >= min_i:
+							result.hit_targets.append(next_pos)
 					return
 				"blocker":
 					return

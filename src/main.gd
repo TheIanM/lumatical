@@ -109,6 +109,33 @@ const LEVELS := [
 		"prism_budget": 1,
 		"splitter_budget": 1,
 	},
+	# ── Chapter III: Lenses & Intensity ──
+	# Puzzle 9: Focus — a split beam is too weak; focus it through a convex lens.
+	{
+		"name": "Focus",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": BEAM_COLOR, "intensity": 0.75},
+			Vector2i(10, 7): {"color": BEAM_COLOR},
+		},
+		"blockers": [],
+		"mirror_budget": 1,
+		"splitter_budget": 1,
+		"lens_budget": 1,
+	},
+	# Puzzle 10: Prism + lens — weak source, split into colors, focus the green beam.
+	{
+		"name": "Convergence",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 0.5}],
+		"targets": {
+			Vector2i(10, 1): {"color": C_RED},
+			Vector2i(10, 4): {"color": C_GREEN, "intensity": 0.75},
+		},
+		"blockers": [],
+		"mirror_budget": 1,
+		"prism_budget": 1,
+		"lens_budget": 1,
+	},
 ]
 
 var _current_level := 0
@@ -127,12 +154,13 @@ var _next_button: Button
 var _toolbelt: HBoxContainer
 var _tool_buttons: Array = []
 
-const TOOL_NAMES := ["Mirror", "Prism", "Filter", "Splitter"]
+const TOOL_NAMES := ["Mirror", "Prism", "Filter", "Splitter", "Lens"]
 const TOOL_COLORS := [
 	Color(0.0, 0.94, 1.0),   # Mirror — cyan
 	Color(1.0, 0.0, 0.9),    # Prism — magenta
 	Color(1.0, 0.9, 0.0),    # Filter — yellow
 	Color(1.0, 0.53, 0.0),   # Splitter — orange
+	Color(0.67, 0.4, 1.0),   # Lens — violet
 ]
 
 
@@ -224,7 +252,7 @@ func _create_toolbelt() -> void:
 	_toolbelt.add_theme_constant_override("separation", 8)
 	ui.add_child(_toolbelt)
 
-	for i in range(4):
+	for i in range(5):
 		var btn := Button.new()
 		btn.text = "[%d] %s" % [i + 1, TOOL_NAMES[i]]
 		btn.custom_minimum_size = Vector2(150, 56)
@@ -240,15 +268,17 @@ func _update_toolbelt() -> void:
 		LEVELS[_current_level].get("prism_budget", 0),
 		LEVELS[_current_level].get("filter_budget", 0),
 		LEVELS[_current_level].get("splitter_budget", 0),
+		LEVELS[_current_level].get("lens_budget", 0),
 	]
 	var used := [
 		grid.mirrors.size(),
 		grid.prisms.size(),
 		grid.filters.size(),
 		grid.splitters.size(),
+		grid.lenses.size(),
 	]
 
-	for i in range(4):
+	for i in range(5):
 		var btn: Button = _tool_buttons[i]
 		if budgets[i] == 0:
 			btn.visible = false
@@ -280,11 +310,13 @@ func _load_level(index: int) -> void:
 	grid.prism_budget = level.get("prism_budget", 0)
 	grid.filter_budget = level.get("filter_budget", 0)
 	grid.splitter_budget = level.get("splitter_budget", 0)
+	grid.lens_budget = level.get("lens_budget", 0)
 	grid.active_tool = 0
 	grid.mirrors.clear()
 	grid.prisms.clear()
 	grid.filters.clear()
 	grid.splitters.clear()
+	grid.lenses.clear()
 	grid.queue_redraw()
 
 	status_label.remove_theme_color_override("font_color")
@@ -324,7 +356,10 @@ func _run_simulation() -> void:
 func _build_tools_dict() -> Dictionary:
 	var d := {}
 	for pos in grid.targets:
-		d[pos] = {"type": "target", "color": grid.targets[pos]["color"]}
+		var tdata := {"type": "target", "color": grid.targets[pos]["color"]}
+		if grid.targets[pos].has("intensity"):
+			tdata["intensity"] = grid.targets[pos]["intensity"]
+		d[pos] = tdata
 	for pos in grid.blockers:
 		d[pos] = {"type": "blocker"}
 	for pos in grid.mirrors:
@@ -335,6 +370,8 @@ func _build_tools_dict() -> Dictionary:
 		d[pos] = {"type": "filter", "color": Grid.FILTER_COLORS[int(grid.filters[pos])]}
 	for pos in grid.splitters:
 		d[pos] = {"type": "splitter", "orientation": int(grid.splitters[pos])}
+	for pos in grid.lenses:
+		d[pos] = {"type": "lens", "orientation": int(grid.lenses[pos])}
 	return d
 
 

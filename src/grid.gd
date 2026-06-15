@@ -24,15 +24,17 @@ var mirrors: Dictionary = {}   # Vector2i -> int (0="/", 1="\")
 var prisms: Dictionary = {}    # Vector2i -> int (0=default, 1=flipped)
 var filters: Dictionary = {}   # Vector2i -> int color index (0=R, 1=G, 2=B)
 var splitters: Dictionary = {} # Vector2i -> int (0=split-right, 1=split-left)
+var lenses: Dictionary = {}    # Vector2i -> int (0=convex/focus, 1=concave/spread)
 
 # How many of each tool the player is allowed to place
 var mirror_budget: int = 2
 var prism_budget: int = 0
 var filter_budget: int = 0
 var splitter_budget: int = 0
+var lens_budget: int = 0
 
 # Currently selected tool for placement
-# 0=mirror, 1=prism, 2=filter, 3=splitter
+# 0=mirror, 1=prism, 2=filter, 3=splitter, 4=lens
 var active_tool: int = 0
 
 # Runtime — updated by the controller after simulation
@@ -50,6 +52,7 @@ const C_MIRROR := Color(0.0, 0.94, 1.0)           # #00f0ff neon cyan
 const C_PRISM := Color(1.0, 0.0, 0.9)             # #ff00e5 neon magenta
 const C_FILTER := Color(1.0, 0.9, 0.0)           # #ffe600 neon yellow
 const C_SPLITTER := Color(1.0, 0.53, 0.0)        # #ff8800 neon orange
+const C_LENS := Color(0.67, 0.4, 1.0)            # #aa66ff neon violet
 const C_BLOCKER := Color(0.18, 0.18, 0.22)
 const C_HOVER := Color(1, 1, 1, 0.06)
 
@@ -81,6 +84,7 @@ func _draw() -> void:
 	_draw_blockers()
 	_draw_targets()
 	_draw_splitters()
+	_draw_lenses()
 	_draw_filters()
 	_draw_prisms()
 	_draw_mirrors()
@@ -209,6 +213,24 @@ func _draw_splitters() -> void:
 		draw_line(c, c + Vector2(0, arrow_y), C_SPLITTER, 1.5)
 
 
+func _draw_lenses() -> void:
+	for pos in lenses:
+		var orient: int = int(lenses[pos])
+		var c := _cell_center(pos)
+		var s := cell_size * 0.3
+		# Soft glow halo
+		draw_circle(c, cell_size * 0.4, Color(C_LENS.r, C_LENS.g, C_LENS.b, 0.04))
+		# Lens shape: two arcs forming an eye/lens outline
+		# Convex (0): horizontal "()" shape (converging)
+		# Concave (1): vertical ")(" shape (diverging)
+		if orient == 0:
+			draw_arc(c + Vector2(-s * 0.3, 0), s * 0.7, -PI / 2, PI / 2, 16, C_LENS, 2.5)
+			draw_arc(c + Vector2(s * 0.3, 0), s * 0.7, PI / 2, PI * 1.5, 16, C_LENS, 2.5)
+		else:
+			draw_arc(c + Vector2(0, -s * 0.3), s * 0.7, 0, PI, 16, C_LENS, 2.5)
+			draw_arc(c + Vector2(0, s * 0.3), s * 0.7, PI, TAU, 16, C_LENS, 2.5)
+
+
 func _draw_sources() -> void:
 	for src in sources:
 		var c := _cell_center(src["pos"])
@@ -244,6 +266,7 @@ func _draw_hover() -> void:
 		1: base = C_PRISM
 		2: base = C_FILTER
 		3: base = C_SPLITTER
+		4: base = C_LENS
 		_: base = Color(1, 1, 1)
 	draw_rect(Rect2(c.x - s / 2.0, c.y - s / 2.0, s, s), Color(base.r, base.g, base.b, 0.1), true)
 
@@ -264,6 +287,7 @@ func clear_tools() -> void:
 	prisms.clear()
 	filters.clear()
 	splitters.clear()
+	lenses.clear()
 	tools_changed.emit()
 	queue_redraw()
 
@@ -309,6 +333,11 @@ func _unhandled_input(event: InputEvent) -> void:
 					active_tool = 3
 					tools_changed.emit()
 					queue_redraw()
+			KEY_5:
+				if lens_budget > 0:
+					active_tool = 4
+					tools_changed.emit()
+					queue_redraw()
 			KEY_R:
 				_rotate_hovered()
 
@@ -340,6 +369,11 @@ func _place_or_toggle(gp: Vector2i) -> void:
 		tools_changed.emit()
 		queue_redraw()
 		return
+	if lenses.has(gp):
+		lenses[gp] = 1 - int(lenses[gp])
+		tools_changed.emit()
+		queue_redraw()
+		return
 
 	# Place new tool of the active type
 	match active_tool:
@@ -359,6 +393,10 @@ func _place_or_toggle(gp: Vector2i) -> void:
 			if splitters.size() >= splitter_budget:
 				return
 			splitters[gp] = 0
+		4:  # Lens
+			if lenses.size() >= lens_budget:
+				return
+			lenses[gp] = 0
 
 	tools_changed.emit()
 	queue_redraw()
@@ -377,6 +415,9 @@ func _remove(gp: Vector2i) -> void:
 		changed = true
 	if splitters.has(gp):
 		splitters.erase(gp)
+		changed = true
+	if lenses.has(gp):
+		lenses.erase(gp)
 		changed = true
 	if changed:
 		tools_changed.emit()
@@ -398,6 +439,10 @@ func _rotate_hovered() -> void:
 		queue_redraw()
 	elif splitters.has(_hovered_cell):
 		splitters[_hovered_cell] = 1 - int(splitters[_hovered_cell])
+		tools_changed.emit()
+		queue_redraw()
+	elif lenses.has(_hovered_cell):
+		lenses[_hovered_cell] = 1 - int(lenses[_hovered_cell])
 		tools_changed.emit()
 		queue_redraw()
 
