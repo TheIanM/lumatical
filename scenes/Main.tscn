@@ -1,9 +1,10 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://src/grid.gd" id="2_grid"]
 [ext_resource type="Script" path="res://src/beam_layer.gd" id="3_beams"]
 [ext_resource type="Script" path="res://src/background.gd" id="4_bg"]
+[ext_resource type="Script" path="res://src/audio_manager.gd" id="5_audio"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_beams"]
 blend_mode = 1
@@ -20,6 +21,9 @@ script = ExtResource("2_grid")
 [node name="BeamLayer" type="Node2D" parent="."]
 material = SubResource("CanvasItemMaterial_beams")
 script = ExtResource("3_beams")
+
+[node name="AudioManager" type="Node" parent="."]
+script = ExtResource("5_audio")
 
 [node name="UI" type="CanvasLayer" parent="."]
 

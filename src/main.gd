@@ -277,6 +277,7 @@ var _solved := false
 @onready var grid: Grid = $Grid
 @onready var beam_layer: BeamLayer = $BeamLayer
 @onready var status_label: Label = $UI/StatusLabel
+@onready var audio: AudioManager = $AudioManager
 
 # Solve overlay nodes (created in code)
 var _overlay: ColorRect
@@ -475,9 +476,7 @@ func _load_level(index: int) -> void:
 	status_label.remove_theme_color_override("font_color")
 	_run_simulation()
 	_update_status()
-
-
-# ── Simulation ───────────────────────────────────────────────────────────────
+	audio.stop_all_tones()
 
 func _on_tools_changed() -> void:
 	_run_simulation()
@@ -498,12 +497,24 @@ func _run_simulation() -> void:
 	grid.set_hit_targets(result.hit_targets)
 	grid.set_destroyed_enemies(result.destroyed_enemies)
 
+	# Feed beam data to the audio system
+	var beam_audio_data: Array = []
+	for seg in result.segments:
+		beam_audio_data.append({
+			"color": seg.color,
+			"intensity": seg.intensity,
+			"y_pos": int(seg.start.y / CELL_SIZE),
+		})
+	audio.update_beam_tones(beam_audio_data)
+
 	# Win detection — show overlay on transition to solved
 	var was_solved := _solved
 	_solved = _check_win(result.hit_targets)
 	if _solved and not was_solved:
+		audio.play_solve_chord()
 		_show_solve_overlay()
 	elif not _solved and was_solved:
+		audio.stop_all_tones()
 		_overlay.visible = false
 
 
@@ -574,3 +585,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _overlay.visible and event is InputEventKey and event.pressed:
 		if event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
 			_on_next_pressed()
+		return
+
+	if event is InputEventKey and event.pressed and event.keycode == KEY_M:
+		audio.toggle_mute()

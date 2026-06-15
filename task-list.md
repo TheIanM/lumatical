@@ -1,32 +1,42 @@
-# Task List — Level Editor
+# Task List — Generative Audio System
 
 ## Goal
-Build a level editor with solution-first validation per the GDD.
+Implement the GDD's generative audio: each beam produces a sustained tone
+based on color and grid position, interactions have percussive sounds, and
+solving a puzzle produces a convergent chord.
 
-## Design
-The editor is a separate scene (Editor.tscn) that lets you:
-1. Place fixed elements: sources, targets, blockers, enemies
-2. Place "solution" tools to prove the puzzle is solvable
-3. Hit Validate — runs BeamSimulator, confirms all targets are hit
-4. Export — saves the puzzle as JSON (tools stripped, budgets derived from solution)
-5. Play-test — toggle to game mode to try solving it yourself
+## Design (from GDD)
+- Pitch: determined by beam's vertical position (top=high, bottom=low)
+- Volume: determined by beam intensity
+- Timbre: white=rich fundamental, red=warm low, green=clean mid, blue=crystalline high
+- Mirror reflection: percussive ping
+- Prism split: crystalline shatter
+- Target hit: resonant confirmation tone
+- Solve: all tones converge into a sustained chord, fades over 3s
+- Ambient drone: low evolving pad beneath everything
+
+## Technical Approach
+Godot's AudioStreamGenerator lets us synthesize audio in real-time by
+filling PCM buffers. We'll create one generator for the ambient drone
+and use AudioStreamPlayer nodes for discrete SFX (pings, shatters).
+
+For sustained beam tones, we use a pool of AudioStreamPlayer nodes with
+generated AudioStreamWAV resources (simple sine + harmonics), pitched
+per beam. This is simpler than raw PCM and sufficient for the prototype.
 
 ## Steps
-1. PuzzleSerializer: convert between LEVELS dict format and JSON files
-   → verify: can save/load existing puzzles round-trip
-2. Editor grid: place/edit all element types with a palette UI
-   → verify: can build a puzzle from scratch
-3. Validator: run sim on solution config, report which targets are hit
-   → verify: green check when all hit, red X with details when not
-4. Export: derive budgets from solution tools, save JSON
-   → verify: exported puzzle loads and plays correctly
-5. Scene switching: Main menu → Editor → Playtest
-   → verify: full round-trip works
+1. AudioManager: singleton-style node, manages all audio
+   → ambient drone via AudioStreamGenerator
+   → beam tone generation (pitch from position, timbre from color)
+2. Wire beam tone updates into the simulation loop
+   → tones start/stop as beams appear/disappear
+3. Interaction SFX: mirror ping, prism shatter, target hit
+4. Solve chord: convergent chord on puzzle completion
+5. Settings: mute toggle
 
 ## Status
-- [x] PuzzleSerializer (JSON save/load)
-- [x] Editor scene + grid + palette
-- [x] Validator (solution-first)
-- [x] Export with budget derivation
-- [x] Play-test toggle
-- [x] Scene switching
+- [x] AudioManager core + ambient drone
+- [x] Beam tones (pitch + timbre by color)
+- [x] Interaction SFX
+- [x] Solve chord
+- [x] Mute toggle
