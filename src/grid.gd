@@ -227,9 +227,12 @@ func set_hit_targets(arr: Array) -> void:
 	queue_redraw()
 
 
-## Remove all player-placed mirrors.
-func clear_mirrors() -> void:
+## Remove all player-placed tools (mirrors, prisms, filters, splitters).
+func clear_tools() -> void:
 	mirrors.clear()
+	prisms.clear()
+	filters.clear()
+	splitters.clear()
 	tools_changed.emit()
 	queue_redraw()
 
