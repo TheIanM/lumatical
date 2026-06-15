@@ -1,6 +1,9 @@
 extends Node2D
 
 ## Lumatical — Main game controller.
+
+## Static — set by PuzzleSelect before scene switch.
+static var start_level := 0
 ##
 ## Orchestrates the game loop: loads level data, runs the beam simulation
 ## whenever the player places/moves/removes a tool, updates the beam
@@ -311,7 +314,7 @@ func _ready() -> void:
 	_create_overlay()
 	_create_toolbelt()
 	_create_top_bar()
-	_load_level(0)
+	_load_level(start_level)
 
 
 # ── Overlay ──────────────────────────────────────────────────────────────────
@@ -365,7 +368,14 @@ func _show_solve_overlay() -> void:
 	else:
 		_next_button.text = "Next Puzzle →"
 	_solve_title.add_theme_color_override("font_color", _dominant_target_color())
+
+	# Delay overlay so player sees the solved grid glowing for a moment
+	_overlay.color = Color(0.004, 0.004, 0.01, 0.0)
 	_overlay.visible = true
+	_overlay.modulate.a = 0.0
+	var tween := create_tween()
+	tween.tween_interval(0.7)
+	tween.tween_property(_overlay, "modulate:a", 1.0, 0.4)
 
 
 func _on_next_pressed() -> void:
@@ -410,6 +420,19 @@ func _create_top_bar() -> void:
 	editor_btn.offset_bottom = 44
 	editor_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Editor.tscn"))
 	ui.add_child(editor_btn)
+
+	# Menu button
+	var menu_btn := Button.new()
+	menu_btn.text = "☰ Menu"
+	menu_btn.add_theme_font_size_override("font_size", 13)
+	menu_btn.custom_minimum_size = Vector2(90, 32)
+	menu_btn.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	menu_btn.offset_left = 200
+	menu_btn.offset_top = 12
+	menu_btn.offset_right = 296
+	menu_btn.offset_bottom = 44
+	menu_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
+	ui.add_child(menu_btn)
 
 
 func _update_toolbelt() -> void:
