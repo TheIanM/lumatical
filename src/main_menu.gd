@@ -85,56 +85,144 @@ func _draw_particles() -> void:
 
 
 func _draw_title_beams() -> void:
-	_draw_beam_text("LUMATICAL", Vector2(_viewport_size.x * 0.5, 120), 40.0, TITLE_COLOR)
+	var palette := [ACCENT_CYAN, ACCENT_MAGENTA, ACCENT_GREEN, Color(1.0, 0.9, 0.0), TITLE_COLOR]
+	_draw_beam_text("LUMATICAL", Vector2(_viewport_size.x * 0.5, 130), 48.0, palette)
 
 
-## Draw a string of letters as glowing beam segments.
-func _draw_beam_text(text: String, center: Vector2, letter_h: float, col: Color) -> void:
+## Draw a string where each letter is one continuous beam bouncing off
+## mirrors at each corner. Each letter gets its own color and source dot.
+func _draw_beam_text(text: String, center: Vector2, letter_h: float, palette: Array) -> void:
 	var chars := text.to_upper()
-	var letter_w := letter_h * 0.55
-	var spacing := letter_w * 1.3
+	var letter_w := letter_h * 0.6
+	var spacing := letter_w * 1.25
 	var total_w := spacing * (chars.length() - 1)
 	var start_x := center.x - total_w * 0.5
-
 	var pulse := 1.0 + sin(_time * 1.5) * 0.04
-	var i := 0
-	for ch in chars:
-		var glyph := _get_glyph(ch)
-		if glyph.is_empty():
-			i += 1
-			continue
+
+	for i in range(chars.length()):
+		var ch := chars[i]
+		var col: Color = palette[i % palette.size()]
 		var origin := Vector2(start_x + i * spacing, center.y)
-		for seg in glyph:
-			var p1 := origin + Vector2(seg[0].x * letter_w, seg[0].y * letter_h)
-			var p2 := origin + Vector2(seg[1].x * letter_w, seg[1].y * letter_h)
-			_draw_glow_line(p1, p2, col, pulse)
-		i += 1
+
+		if ch == "T":
+			_draw_prism_t(origin, letter_w, letter_h, col, pulse, i)
+			continue
+
+		var glyph := _get_glyph(ch)
+		if glyph.size() < 2:
+			continue
+		# Convert normalized points to screen coords
+		var pts: Array = []
+		for p in glyph:
+			pts.append(origin + Vector2(p.x * letter_w, p.y * letter_h))
+		# Draw source dot at beam entry
+		var src_pulse := 1.0 + sin(_time * 3.0 + i) * 0.15
+		_draw_source(pts[0], col, src_pulse)
+		# Draw each segment of the beam path
+		for j in range(pts.size() - 1):
+			_draw_glow_line(pts[j], pts[j + 1], col, pulse)
+		# Draw mirror indicators at each interior vertex
+		for j in range(1, pts.size() - 1):
+			_draw_mirror(pts[j], pts[j - 1], pts[j + 1], col, pulse)
+		# Draw endpoint glow at beam terminus
+		_draw_endpoint(pts[pts.size() - 1], col, pulse)
+
+
+## Draw the letter T using a prism: beam enters from the left (top bar),
+## hits a prism at center. Green continues right, blue drops down (stem),
+## red shoots up briefly.
+func _draw_prism_t(origin: Vector2, lw: float, lh: float, col: Color, pulse: float, letter_idx: int) -> void:
+	var src_pulse := 1.0 + sin(_time * 3.0 + letter_idx) * 0.15
+	var left := origin + Vector2(0, 0)
+	var center := origin + Vector2(0.35 * lw, 0)
+	var right := origin + Vector2(0.7 * lw, 0)
+	var bottom := origin + Vector2(0.35 * lw, 1.4 * lh)
+	var overshoot := origin + Vector2(0.35 * lw, -0.18 * lh)
+
+	# Source dot
+	_draw_source(left, col, src_pulse)
+	# Incoming beam (left half of top bar)
+	_draw_glow_line(left, center, col, pulse)
+	# Prism at junction
+	_draw_prism_icon(center, pulse)
+	# Green beam continues right (right half of top bar)
+	_draw_glow_line(center, right, ACCENT_GREEN, pulse)
+	_draw_endpoint(right, ACCENT_GREEN, pulse)
+	# Blue beam drops down (the stem)
+	_draw_glow_line(center, bottom, Color(0.3, 0.55, 1.0), pulse)
+	_draw_endpoint(bottom, Color(0.3, 0.55, 1.0), pulse)
+	# Red beam shoots up briefly (overspray)
+	_draw_glow_line(center, overshoot, Color(1.0, 0.25, 0.2), pulse)
+	_draw_endpoint(overshoot, Color(1.0, 0.25, 0.2), pulse)
+
+
+func _draw_prism_icon(pos: Vector2, pulse: float) -> void:
+	var s := 8.0 * pulse
+	var col := Color(1.0, 0.0, 0.9)  # Magenta — matches in-game prism color
+	# Triangle — the prism shape
+	var pts := PackedVector2Array([
+		pos + Vector2(0, -s),
+		pos + Vector2(-s * 0.85, s * 0.6),
+		pos + Vector2(s * 0.85, s * 0.6),
+	])
+	draw_colored_polygon(pts, Color(col.r, col.g, col.b, 0.15))
+	for i in range(3):
+		draw_line(pts[i], pts[(i + 1) % 3], col, 2.0)
+	# Glow halo
+	draw_circle(pos, s * 1.5, Color(col.r, col.g, col.b, 0.04))
+
+
+func _draw_source(pos: Vector2, col: Color, pulse: float) -> void:
+	draw_circle(pos, 18.0 * pulse, Color(col.r, col.g, col.b, 0.02))
+	draw_circle(pos, 12.0 * pulse, Color(col.r, col.g, col.b, 0.06))
+	draw_circle(pos, 7.0, Color(col.r, col.g, col.b, 0.15))
+	draw_circle(pos, 4.0 * pulse, col)
+
+
+func _draw_endpoint(pos: Vector2, col: Color, pulse: float) -> void:
+	draw_circle(pos, 10.0 * pulse, Color(col.r, col.g, col.b, 0.04))
+	draw_circle(pos, 5.0 * pulse, Color(col.r, col.g, col.b, 0.12))
+	draw_circle(pos, 2.5, col)
+
+
+func _draw_mirror(pos: Vector2, _from: Vector2, _to: Vector2, col: Color, pulse: float) -> void:
+	# Determine mirror orientation from the turn direction
+	var d1 := (_from - pos).normalized()
+	var d2 := (_to - pos).normalized()
+	# The mirror bisects the angle — its normal is along d1-d2
+	# Draw a small line perpendicular to the average direction
+	var avg := (d1 + d2).normalized()
+	var perp := Vector2(-avg.y, avg.x)
+	var s := 7.0
+	var col_bright := col.lerp(Color.WHITE, 0.3 * pulse)
+	# Mirror line (bright)
+	draw_line(pos + perp * s, pos - perp * s, col_bright, 3.0)
+	# Mirror glow
+	draw_line(pos + perp * s, pos - perp * s, Color(col.r, col.g, col.b, 0.2), 6.0)
 
 
 func _draw_glow_line(p1: Vector2, p2: Vector2, col: Color, pulse: float) -> void:
 	var i := pulse
-	# 5-layer additive glow (same as BeamLayer)
 	draw_line(p1, p2, Color(col.r, col.g, col.b, 0.02 * i), 22.0)
 	draw_line(p1, p2, Color(col.r, col.g, col.b, 0.05 * i), 14.0)
 	draw_line(p1, p2, Color(col.r, col.g, col.b, 0.12 * i), 8.0)
 	draw_line(p1, p2, Color(col.r, col.g, col.b, 0.3 * i), 4.0)
 	var core := col.lerp(Color.WHITE, 0.35 * i)
 	draw_line(p1, p2, core, 2.0)
-	# Endpoint glow
-	draw_circle(p2, 6.0 * i, Color(col.r, col.g, col.b, 0.06))
 
 
-## Stroke font — each letter is an array of [start, end] pairs in
-## normalized coords (x: 0-1 width, y: 0-1.4 height, origin = top-left).
+## Each letter is a continuous beam path — an array of waypoints the beam
+## visits in order. Corners between segments are where mirrors sit.
+## Coords are normalized: x 0-1 (width), y 0-1.4 (height), origin = top-left.
 func _get_glyph(ch: String) -> Array:
 	match ch:
-		"L": return [[Vector2(0, 0), Vector2(0, 1.4)], [Vector2(0, 1.4), Vector2(0.7, 1.4)]]
-		"U": return [[Vector2(0, 0), Vector2(0, 1.2)], [Vector2(0, 1.2), Vector2(0.7, 1.2)], [Vector2(0.7, 1.2), Vector2(0.7, 0)]]
-		"M": return [[Vector2(0, 0), Vector2(0, 1.4)], [Vector2(0, 0), Vector2(0.35, 0.7)], [Vector2(0.35, 0.7), Vector2(0.7, 0)], [Vector2(0.7, 0), Vector2(0.7, 1.4)]]
-		"A": return [[Vector2(0, 1.4), Vector2(0.35, 0)], [Vector2(0.35, 0), Vector2(0.7, 1.4)], [Vector2(0.12, 0.9), Vector2(0.58, 0.9)]]
-		"T": return [[Vector2(0, 0), Vector2(0.7, 0)], [Vector2(0.35, 0), Vector2(0.35, 1.4)]]
-		"I": return [[Vector2(0.15, 0), Vector2(0.55, 0)], [Vector2(0.35, 0), Vector2(0.35, 1.4)], [Vector2(0.15, 1.4), Vector2(0.55, 1.4)]]
-		"C": return [[Vector2(0.7, 0.2), Vector2(0.5, 0)], [Vector2(0.5, 0), Vector2(0.2, 0)], [Vector2(0.2, 0), Vector2(0, 0.25)], [Vector2(0, 0.25), Vector2(0, 1.15)], [Vector2(0, 1.15), Vector2(0.2, 1.4)], [Vector2(0.2, 1.4), Vector2(0.5, 1.4)], [Vector2(0.5, 1.4), Vector2(0.7, 1.2)]]
+		"L": return [Vector2(0, 0), Vector2(0, 1.4), Vector2(0.7, 1.4)]
+		"U": return [Vector2(0, 0), Vector2(0, 1.2), Vector2(0.7, 1.2), Vector2(0.7, 0)]
+		"M": return [Vector2(0, 0), Vector2(0, 1.4), Vector2(0.35, 0.55), Vector2(0.7, 1.4), Vector2(0.7, 0)]
+		"A": return [Vector2(0, 1.4), Vector2(0.35, 0), Vector2(0.7, 1.4)]
+		# T is handled by _draw_prism_t
+		"I": return [Vector2(0.35, 0), Vector2(0.35, 1.4)]
+		"C": return [Vector2(0.75, 0.2), Vector2(0.5, 0), Vector2(0.2, 0), Vector2(0, 0.3), Vector2(0, 1.1), Vector2(0.2, 1.4), Vector2(0.5, 1.4), Vector2(0.75, 1.2)]
 		_: return []
 
 
