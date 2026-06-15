@@ -1,16 +1,24 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://src/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://src/grid.gd" id="2_grid"]
 [ext_resource type="Script" path="res://src/beam_layer.gd" id="3_beams"]
+[ext_resource type="Script" path="res://src/background.gd" id="4_bg"]
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_beams"]
+blend_mode = 1
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
+
+[node name="Background" type="Node2D" parent="."]
+script = ExtResource("4_bg")
 
 [node name="Grid" type="Node2D" parent="."]
 script = ExtResource("2_grid")
 
 [node name="BeamLayer" type="Node2D" parent="."]
+material = SubResource("CanvasItemMaterial_beams")
 script = ExtResource("3_beams")
 
 [node name="UI" type="CanvasLayer" parent="."]

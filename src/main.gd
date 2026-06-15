@@ -23,6 +23,7 @@ const LEVELS := [
 	# ── Chapter I: Mirrors ──
 	# Puzzle 1: One corner — learn mirrors redirect light.
 	{
+		"name": "First Light",
 		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
 		"targets": {Vector2i(10, 1): {"color": BEAM_COLOR}},
 		"blockers": [],
@@ -31,6 +32,7 @@ const LEVELS := [
 	},
 	# Puzzle 2: Blocker forces a detour — route around obstacles.
 	{
+		"name": "Detour",
 		"sources": [{"pos": Vector2i(1, 1), "direction": Vector2i(0, 1), "color": BEAM_COLOR, "intensity": 1.0}],
 		"targets": {Vector2i(10, 6): {"color": BEAM_COLOR}},
 		"blockers": [Vector2i(1, 6)],
@@ -39,6 +41,7 @@ const LEVELS := [
 	},
 	# Puzzle 3: Two corners, no blocker — plan a multi-step path.
 	{
+		"name": "The Long Way",
 		"sources": [{"pos": Vector2i(1, 1), "direction": Vector2i(0, 1), "color": BEAM_COLOR, "intensity": 1.0}],
 		"targets": {Vector2i(10, 1): {"color": BEAM_COLOR}},
 		"blockers": [],
@@ -48,6 +51,7 @@ const LEVELS := [
 	# ── Chapter II: Prisms & Color ──
 	# Puzzle 4: Meet the prism — split white into red and green, one mirror.
 	{
+		"name": "Spectrum",
 		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
 		"targets": {
 			Vector2i(10, 1): {"color": C_RED},
@@ -59,6 +63,7 @@ const LEVELS := [
 	},
 	# Puzzle 5: Full spectrum — split into RGB, mirrors for red and blue.
 	{
+		"name": "Full Spectrum",
 		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
 		"targets": {
 			Vector2i(10, 1): {"color": C_RED},
@@ -71,6 +76,7 @@ const LEVELS := [
 	},
 	# Puzzle 6: Filter and bend — extract blue from white, route around blocker.
 	{
+		"name": "Sieve",
 		"sources": [{"pos": Vector2i(1, 1), "direction": Vector2i(0, 1), "color": BEAM_COLOR, "intensity": 1.0}],
 		"targets": {Vector2i(10, 6): {"color": C_BLUE}},
 		"blockers": [Vector2i(1, 6)],
@@ -80,6 +86,7 @@ const LEVELS := [
 	},
 	# Puzzle 7: Beam split — duplicate a beam to hit two targets.
 	{
+		"name": "Twin Beams",
 		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
 		"targets": {
 			Vector2i(10, 1): {"color": BEAM_COLOR},
@@ -91,6 +98,7 @@ const LEVELS := [
 	},
 	# Puzzle 8: Split decision — prism + splitter to reach two green targets.
 	{
+		"name": "Split Decision",
 		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
 		"targets": {
 			Vector2i(10, 4): {"color": C_GREEN},
@@ -149,7 +157,7 @@ func _create_overlay() -> void:
 	var ui: CanvasLayer = $UI
 
 	_overlay = ColorRect.new()
-	_overlay.color = Color(0.024, 0.024, 0.055, 0.88)
+	_overlay.color = Color(0.004, 0.004, 0.01, 0.92)
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_overlay.visible = false
 	ui.add_child(_overlay)
@@ -358,9 +366,8 @@ func _dominant_target_color() -> Color:
 func _update_status() -> void:
 	if _solved:
 		return
-	status_label.text = "Puzzle %d/%d  |  L-click: place  R-click: remove  R: cycle/rotate" % [
-		_current_level + 1, LEVELS.size(),
-	]
+	var level_name: String = LEVELS[_current_level].get("name", "Untitled")
+	status_label.text = "%d. %s" % [_current_level + 1, level_name]
 	_update_toolbelt()
 
 

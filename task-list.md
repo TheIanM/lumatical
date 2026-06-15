@@ -1,44 +1,44 @@
-# Task List — Prisms & Color Splitting
+# Task List — Visual Polish (Waves-inspired aesthetic)
 
 ## Goal
-Implement prisms and color splitting — the next Phase I milestone per the GDD roadmap.
-Phase I calls for: "Implement mirrors, prisms, and color splitting."
+Transform the flat prototype look into the neon-drenched, glow-heavy aesthetic
+described in the GDD and inspired by Waves: deep void, additive light bloom,
+drifting particles, and elements that feel alive.
 
-## Design Decisions (stated assumptions)
-
-The GDD describes prisms as splitting white light into RGB at "a fixed angular
-separation." Our grid uses cardinal directions only (up/down/left/right), so
-"angular separation" maps to 90-degree turns. The design:
-
-1. **Prism on white beam**: splits into 3 colored beams.
-   - GREEN continues straight
-   - RED turns 90° left (counterclockwise)
-   - BLUE turns 90° right (clockwise)
-   - Orientation 1 swaps red/blue sides.
-2. **Colored beam on prism**: passes through unaffected (no split).
-3. **Targets**: a target is only "hit" when beam color matches target color.
-   A wrong-color beam is absorbed but does not activate the target.
-4. **Tool selection**: keyboard-based (1 = mirror, 2 = prism) for the prototype.
-   A proper toolbelt UI is a future task.
+## Key Constraints
+- Renderer is `gl_compatibility` (no WorldEnvironment bloom/Glow post-process).
+- All glow must be faked via multi-pass additive drawing.
+- Must stay calm/atmospheric per GDD, not chaotic like Waves.
 
 ## Steps
 
-1. Update BeamSimulator: add color constants, prism tool handling, beam-split
-   via work queue → verify: white beam through prism produces 3 RGB segments
-2. Update Grid: add prism placement/drawing, tool selection, budgets
-   → verify: can place prisms, switch between mirror/prism via keys
-3. Update Main: add prism_budget to levels, add Chapter II puzzles, tool selection
-   status → verify: new puzzles are solvable
-4. Run project end-to-end → verify: all puzzles playable and winnable
+1. **BeamLayer: additive glow overhaul**
+   → CanvasItemMaterial with BLEND_MODE_ADD
+   → 5-layer glow (ultra-wide halo → bright core) with round caps
+   → Radial glow at segment endpoints (beam intersections feel hot)
+   → verify: overlapping beams create bright hotspots
+
+2. **Background system (new file)**
+   → Slowly drifting ambient particles (dust motes)
+   → Subtle animated radial gradient (breathing void)
+   → verify: background has depth and motion, never distracting
+
+3. **Grid: living elements**
+   → _process-driven animation (pulsing source glow, breathing grid)
+   → Source orb with pulsing aura
+   → verify: grid feels alive when idle
+
+4. **Hit-point flares**
+   → Radial burst where beams hit mirrors/prisms/targets
+   → verify: tool interactions have visual punch
+
+5. **Color & contrast pass**
+   → Deepen background, saturate beam colors
+   → verify: beams pop against the void
 
 ## Status
-- [x] Commit existing prototype
-- [x] BeamSimulator prism support
-- [x] Grid prism support
-- [x] Main prism levels
-- [x] End-to-end test
-- [x] Color Filter tool (simulator + grid + puzzle 6)
-- [x] Beam Splitter tool (simulator + grid + puzzles 7-8)
-- [x] Toolbelt UI (suggestions.md item 1)
-- [x] clear_mirrors rename (suggestions.md item 2)
-- [x] Solve overlay color (suggestions.md item 3)
+- [x] BeamLayer additive glow
+- [x] Background particle system
+- [x] Grid animation
+- [x] Hit-point flares
+- [x] Color/contrast pass

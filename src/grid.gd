@@ -53,6 +53,8 @@ const C_SPLITTER := Color(1.0, 0.53, 0.0)        # #ff8800 neon orange
 const C_BLOCKER := Color(0.18, 0.18, 0.22)
 const C_HOVER := Color(1, 1, 1, 0.06)
 
+var _time: float = 0.0
+
 # Filter colors — indexed by the int stored in `filters`
 const FILTER_COLORS := [
 	Color(1.0, 0.2, 0.33),   # RED
@@ -64,6 +66,11 @@ const FILTER_COLORS := [
 # ── Lifecycle ────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
+	queue_redraw()
+
+
+func _process(delta: float) -> void:
+	_time += delta
 	queue_redraw()
 
 
@@ -85,21 +92,30 @@ func _draw() -> void:
 func _draw_grid_lines() -> void:
 	var total_w := grid_width * cell_size
 	var total_h := grid_height * cell_size
+	# Arena floor — dark translucent backdrop gives the grid depth
+	draw_rect(Rect2(0, 0, total_w, total_h), Color(0.02, 0.02, 0.05, 0.5), true)
+	# Breathing grid — subtle opacity pulse
+	var breath := 0.6 + sin(_time * 0.8) * 0.15
+	var grid_col := Color(C_GRID.r, C_GRID.g, C_GRID.b, C_GRID.a * breath)
 	for x in range(grid_width + 1):
 		var xp := x * cell_size
-		draw_line(Vector2(xp, 0), Vector2(xp, total_h), C_GRID, 1.0)
+		draw_line(Vector2(xp, 0), Vector2(xp, total_h), grid_col, 1.0)
 	for y in range(grid_height + 1):
 		var yp := y * cell_size
-		draw_line(Vector2(0, yp), Vector2(total_w, yp), C_GRID, 1.0)
-	# Bright border
-	draw_rect(Rect2(0, 0, total_w, total_h), C_GRID_BORDER, false, 2.0)
+		draw_line(Vector2(0, yp), Vector2(total_w, yp), grid_col, 1.0)
+	# Bright border with subtle pulse
+	var border_glow := 0.7 + sin(_time * 1.2) * 0.2
+	draw_rect(Rect2(0, 0, total_w, total_h), Color(C_GRID_BORDER.r, C_GRID_BORDER.g, C_GRID_BORDER.b, border_glow), false, 2.0)
 
 
 func _draw_blockers() -> void:
 	for pos in blockers:
 		var c := _cell_center(pos)
 		var s := cell_size * 0.6
+		# Dark fill
 		draw_rect(Rect2(c.x - s / 2.0, c.y - s / 2.0, s, s), C_BLOCKER, true)
+		# Subtle red-tinged border — feels ominous
+		draw_rect(Rect2(c.x - s / 2.0, c.y - s / 2.0, s, s), Color(0.3, 0.1, 0.12, 0.6), false, 1.5)
 
 
 func _draw_targets() -> void:
@@ -108,12 +124,18 @@ func _draw_targets() -> void:
 		var hit := _hit_targets.has(pos)
 		var r := cell_size * 0.3
 		var base_col: Color = targets[pos]["color"]
-		var col := base_col if hit else Color(base_col.r, base_col.g, base_col.b, 0.25)
-		# Ring
-		draw_arc(c, r, 0, TAU, 36, col, 3.0)
-		# Filled dot when hit
 		if hit:
-			draw_circle(c, r * 0.55, col)
+			# Hit target — pulsing glow when activated
+			var pulse := 1.0 + sin(_time * 4.0) * 0.15
+			draw_circle(c, r * 2.0 * pulse, Color(base_col.r, base_col.g, base_col.b, 0.08))
+			draw_circle(c, r * 1.4, Color(base_col.r, base_col.g, base_col.b, 0.15))
+			draw_arc(c, r * pulse, 0, TAU, 36, base_col, 3.0)
+			draw_circle(c, r * 0.55 * pulse, base_col)
+		else:
+			# Unhit — dim ring with slow breathing
+			var breath := 0.2 + sin(_time * 1.5 + pos.x * 0.5) * 0.05
+			var col := Color(base_col.r, base_col.g, base_col.b, breath)
+			draw_arc(c, r, 0, TAU, 36, col, 2.0)
 
 
 func _draw_mirrors() -> void:
@@ -121,6 +143,9 @@ func _draw_mirrors() -> void:
 		var orient: int = int(mirrors[pos])
 		var c := _cell_center(pos)
 		var h := cell_size * 0.35
+		# Soft glow halo
+		var glow_r := cell_size * 0.4
+		draw_circle(c, glow_r, Color(C_MIRROR.r, C_MIRROR.g, C_MIRROR.b, 0.04))
 		if orient == 0:  # "/"
 			draw_line(c + Vector2(-h, h), c + Vector2(h, -h), C_MIRROR, 4.0)
 		else:            # "\"
@@ -132,6 +157,8 @@ func _draw_prisms() -> void:
 		var orient: int = int(prisms[pos])
 		var c := _cell_center(pos)
 		var s := cell_size * 0.3
+		# Soft glow halo
+		draw_circle(c, cell_size * 0.4, Color(C_PRISM.r, C_PRISM.g, C_PRISM.b, 0.04))
 		# Triangle — the classic prism shape. Orientation flips it vertically.
 		var pts := PackedVector2Array()
 		if orient == 0:
@@ -186,10 +213,14 @@ func _draw_sources() -> void:
 	for src in sources:
 		var c := _cell_center(src["pos"])
 		var r := cell_size * 0.22
-		# Soft glow
+		var pulse := 1.0 + sin(_time * 2.5) * 0.12
+		# Outer aura — wide and very faint, pulses
+		draw_circle(c, r * 3.5 * pulse, Color(C_SOURCE.r, C_SOURCE.g, C_SOURCE.b, 0.03))
+		draw_circle(c, r * 2.5 * pulse, Color(C_SOURCE.r, C_SOURCE.g, C_SOURCE.b, 0.06))
+		# Mid glow
 		draw_circle(c, r * 1.8, C_SOURCE_GLOW)
-		# Core
-		draw_circle(c, r, C_SOURCE)
+		# Core — bright white-hot
+		draw_circle(c, r * pulse, C_SOURCE)
 		# Direction arrow
 		var d := Vector2(src["direction"])
 		var tip := c + d * cell_size * 0.42
