@@ -70,9 +70,9 @@ var _time: float = 0.0
 
 # Filter colors — indexed by the int stored in `filters`
 const FILTER_COLORS := [
-	Color(1.0, 0.2, 0.33),   # RED
-	Color(0.0, 1.0, 0.53),   # GREEN
-	Color(0.27, 0.4, 1.0),   # BLUE
+	BeamSimulator.RED,
+	BeamSimulator.GREEN,
+	BeamSimulator.BLUE,
 ]
 
 
