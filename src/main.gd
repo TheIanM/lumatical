@@ -497,15 +497,20 @@ func _run_simulation() -> void:
 	grid.set_hit_targets(result.hit_targets)
 	grid.set_destroyed_enemies(result.destroyed_enemies)
 
-	# Feed beam data to the audio system
-	var beam_audio_data: Array = []
+	# Play a single note for each beam-tool interaction.
+	# A "hit" is any segment endpoint that lands on a tool cell.
+	var hits: Array = []
 	for seg in result.segments:
-		beam_audio_data.append({
-			"color": seg.color,
-			"intensity": seg.intensity,
-			"y_pos": int(seg.start.y / CELL_SIZE),
-		})
-	audio.update_beam_tones(beam_audio_data)
+		var end_grid := Vector2i(
+			int(seg.end.x / CELL_SIZE),
+			int(seg.end.y / CELL_SIZE),
+		)
+		if tools.has(end_grid):
+			var ttype: String = tools[end_grid]["type"]
+			if ttype in ["mirror", "prism", "filter", "splitter", "lens", "target"]:
+				hits.append({"color": seg.color, "y_pos": end_grid.y})
+	if not hits.is_empty():
+		audio.play_interaction_notes(hits)
 
 	# Win detection — show overlay on transition to solved
 	var was_solved := _solved
@@ -514,7 +519,6 @@ func _run_simulation() -> void:
 		audio.play_solve_chord()
 		_show_solve_overlay()
 	elif not _solved and was_solved:
-		audio.stop_all_tones()
 		_overlay.visible = false
 
 
