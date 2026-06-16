@@ -27,11 +27,13 @@ const TIER_ENEMIES := ["mirror", "prism", "filter", "splitter", "lens", "refract
 ## Generate a puzzle for the given floor number (1-based).
 ## Returns a level Dictionary matching the LEVELS format.
 ## [param seed_val] — if provided, generation is deterministic.
-static func generate(floor_num: int, seed_val: int = -1) -> Dictionary:
-	return _generate_internal(floor_num, 0, seed_val)
+## [param available_tools] — dict of tool_type -> count that the player has.
+##   The generator only uses tools from this set for the solution.
+static func generate(floor_num: int, seed_val: int = -1, available_tools: Dictionary = {}) -> Dictionary:
+	return _generate_internal(floor_num, 0, seed_val, available_tools)
 
 
-static func _generate_internal(floor_num: int, depth: int, seed_val: int = -1) -> Dictionary:
+static func _generate_internal(floor_num: int, depth: int, seed_val: int = -1, available_tools: Dictionary = {}) -> Dictionary:
 	# Guard against infinite recursion — if we fail 20 times, fall back
 	# to a guaranteed-simple mirror puzzle so the game never softlocks.
 	if depth >= 20:
@@ -46,6 +48,15 @@ static func _generate_internal(floor_num: int, depth: int, seed_val: int = -1) -
 		rng.seed = hash("floor_%d_%d" % [floor_num, randi()])
 
 	var params := _difficulty_params(floor_num, rng)
+
+	# Restrict tool pool to what the player actually has
+	if not available_tools.is_empty():
+		var restricted: Array = []
+		for ttype in available_tools:
+			if int(available_tools[ttype]) > 0 and ttype in params.tool_pool:
+				restricted.append(ttype)
+		if not restricted.is_empty():
+			params.tool_pool = restricted
 
 	# Step 1: Place source
 	var source_pos := _random_edge_cell(rng)
@@ -92,7 +103,7 @@ static func _generate_internal(floor_num: int, depth: int, seed_val: int = -1) -
 
 	# If we couldn't find enough targets, retry
 	if targets.size() < params.target_count:
-		return _generate_internal(floor_num, depth + 1, seed_val)
+		return _generate_internal(floor_num, depth + 1, seed_val, available_tools)
 
 	# Step 5: Build the puzzle — strip tools, set budgets
 	var level := {
@@ -134,7 +145,7 @@ static func _generate_internal(floor_num: int, depth: int, seed_val: int = -1) -
 	# targets are still reachable even with blockers/enemies placed.
 	# This is the same pattern as the level editor's _run_validation().
 	if not _validate(level, tools, source):
-		return _generate_internal(floor_num, depth + 1, seed_val)
+		return _generate_internal(floor_num, depth + 1, seed_val, available_tools)
 
 	return level
 
