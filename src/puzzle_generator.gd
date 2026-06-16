@@ -72,9 +72,8 @@ static func generate(floor_num: int) -> Dictionary:
 		CELL_SIZE,
 	)
 
-	# Step 4: Extract targets from beam endpoints
-	# We want 1-3 targets at positions where beams end (on tools or grid edges)
-	var targets := _extract_targets(result, tools, params.target_count, rng)
+	# Step 4: Extract targets from beam paths
+	var targets := _extract_targets(result, tools, params.target_count, rng, source_pos)
 
 	# If we couldn't find enough targets, retry with more tools
 	if targets.size() < params.target_count and attempts < 100:
@@ -178,35 +177,47 @@ static func _difficulty_params(floor_num: int) -> DiffParams:
 
 # ── Target Extraction ─────────────────────────────────────────────────────────
 
-## Find positions where beams terminate (hit a tool or grid edge) and
-## place targets just before them so they're reachable.
+## Walk along each beam segment and collect every cell the beam passes
+## through. These are all valid target positions — the beam clearly
+## travels through them with the segment's color.
 static func _extract_targets(
 	result: BeamSimulator.SimResult,
 	tools: Dictionary,
 	count: int,
 	rng: RandomNumberGenerator,
+	source_pos: Vector2i,
 ) -> Dictionary:
-	# Collect all segment endpoints that land on a tool cell
 	var candidate_positions: Array = []
 	for seg in result.segments:
+		var start_grid := Vector2i(
+			int(seg.start.x / CELL_SIZE),
+			int(seg.start.y / CELL_SIZE),
+		)
 		var end_grid := Vector2i(
 			int(seg.end.x / CELL_SIZE),
 			int(seg.end.y / CELL_SIZE),
 		)
-		# Target should be placed at the cell BEFORE the tool that stops the beam
-		if tools.has(end_grid) or not _in_bounds(end_grid):
-			# Use the segment start position as the target — it's where the beam
-			# was traveling freely before hitting something
-			var start_grid := Vector2i(
-				int(seg.start.x / CELL_SIZE),
-				int(seg.start.y / CELL_SIZE),
-			)
-			if _in_bounds(start_grid) and not candidate_positions.has(start_grid):
-				if not tools.has(start_grid):
-					candidate_positions.append({
-						"pos": start_grid,
-						"color": seg.color,
-					})
+		# Walk step by step from start to end (inclusive)
+		var dx: int = end_grid.x - start_grid.x
+		var dy: int = end_grid.y - start_grid.y
+		var step := Vector2i(signi(dx), signi(dy))
+		var dist := maxi(absi(dx), absi(dy))
+		for i in range(dist + 1):
+			var cell := start_grid + step * i
+			if not _in_bounds(cell):
+				continue
+			if tools.has(cell):
+				continue
+			if cell == source_pos:
+				continue
+			# Avoid duplicates
+			var already := false
+			for c in candidate_positions:
+				if c["pos"] == cell:
+					already = true
+					break
+			if not already:
+				candidate_positions.append({"pos": cell, "color": seg.color})
 
 	# Pick unique positions for targets
 	var targets: Dictionary = {}
