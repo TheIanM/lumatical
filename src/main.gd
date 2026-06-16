@@ -187,9 +187,9 @@ const LEVELS := [
 		"mirror_budget": 2,
 		"prism_budget": 1,
 	},
-	# Puzzle 15: Convergence — shadow block + chromatic shade + prism.
+	# Puzzle 15: Crossfire — shadow block + chromatic shade + prism.
 	{
-		"name": "Convergence",
+		"name": "Crossfire",
 		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
 		"targets": {
 			Vector2i(10, 4): {"color": C_GREEN},
@@ -257,8 +257,6 @@ const LEVELS := [
 		"prism_budget": 1,
 	},
 	# Puzzle 20: Masterwork — prism + splitter + lens + intensity target.
-	# The culmination: split white into green, split the green beam, focus one
-	# half to meet an intensity-gated target, route the other to a plain target.
 	{
 		"name": "Masterwork",
 		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
@@ -268,6 +266,246 @@ const LEVELS := [
 		},
 		"blockers": [],
 		"mirror_budget": 1,
+		"prism_budget": 1,
+		"splitter_budget": 1,
+		"lens_budget": 1,
+	},
+	# ── Chapter VI: Master Puzzles ──
+	# Puzzle 21: Splitter sends one beam straight, one down via mirror.
+	{
+		"name": "Crossroads",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": BEAM_COLOR},
+			Vector2i(10, 7): {"color": BEAM_COLOR},
+		},
+		"blockers": [],
+		"mirror_budget": 1,
+		"splitter_budget": 1,
+	},
+	# Puzzle 22: Blockers force a two-mirror Z-route across the grid.
+	{
+		"name": "Switchback",
+		"sources": [{"pos": Vector2i(2, 1), "direction": Vector2i(0, 1), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {Vector2i(9, 6): {"color": BEAM_COLOR}},
+		"blockers": [Vector2i(2, 6), Vector2i(7, 4)],
+		"mirror_budget": 2,
+	},
+	# Puzzle 23: Split white, filter one half blue, mirror the other.
+	{
+		"name": "Funnel",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": C_BLUE},
+			Vector2i(10, 7): {"color": BEAM_COLOR},
+		},
+		"blockers": [],
+		"mirror_budget": 1,
+		"splitter_budget": 1,
+		"filter_budget": 1,
+	},
+	# Puzzle 24: Prism splits white, then split the green beam again.
+	{
+		"name": "Fractal",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 1): {"color": C_GREEN},
+			Vector2i(10, 4): {"color": C_GREEN},
+		},
+		"blockers": [],
+		"mirror_budget": 1,
+		"prism_budget": 1,
+		"splitter_budget": 1,
+	},
+	# Puzzle 25: Blocker wall at x=5 forces a route through the gap.
+	{
+		"name": "Bottleneck",
+		"sources": [{"pos": Vector2i(1, 1), "direction": Vector2i(0, 1), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {Vector2i(10, 6): {"color": BEAM_COLOR}},
+		"blockers": [Vector2i(5, 1), Vector2i(5, 2), Vector2i(5, 5), Vector2i(5, 6)],
+		"mirror_budget": 2,
+	},
+	# Puzzle 26: Weak source + shadow block needs a convex lens to break through.
+	{
+		"name": "Stronghold",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 0.5}],
+		"targets": {Vector2i(10, 4): {"color": BEAM_COLOR}},
+		"blockers": [],
+		"shadow_blocks": [{"pos": Vector2i(6, 4), "threshold": 0.75}],
+		"lens_budget": 1,
+	},
+	# Puzzle 27: Null emitter dead zone blocks the direct path; route around.
+	{
+		"name": "Labyrinth",
+		"sources": [{"pos": Vector2i(1, 1), "direction": Vector2i(0, 1), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {Vector2i(10, 7): {"color": BEAM_COLOR}},
+		"blockers": [],
+		"null_emitters": [Vector2i(5, 4)],
+		"mirror_budget": 2,
+	},
+	# Puzzle 28: Split, focus one beam to hit intensity target, mirror the other.
+	{
+		"name": "Divide",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": BEAM_COLOR, "intensity": 0.75},
+			Vector2i(10, 7): {"color": BEAM_COLOR},
+		},
+		"blockers": [],
+		"mirror_budget": 1,
+		"splitter_budget": 1,
+		"lens_budget": 1,
+	},
+	# Puzzle 29: Prism + green shade must be destroyed to reach target.
+	{
+		"name": "Guardian",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": C_GREEN},
+			Vector2i(10, 1): {"color": C_RED},
+			Vector2i(10, 7): {"color": C_BLUE},
+		},
+		"blockers": [],
+		"chromatic_shades": [{"pos": Vector2i(7, 4), "color": C_GREEN}],
+		"mirror_budget": 2,
+		"prism_budget": 1,
+	},
+	# Puzzle 30: Weak source + shadow + intensity target.
+	{
+		"name": "Breach",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 0.5}],
+		"targets": {Vector2i(10, 4): {"color": BEAM_COLOR, "intensity": 0.75}},
+		"blockers": [],
+		"shadow_blocks": [{"pos": Vector2i(6, 4), "threshold": 0.75}],
+		"lens_budget": 1,
+	},
+	# Puzzle 31: Split white, filter one beam red, mirror the other to a white target.
+	{
+		"name": "Dual",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": C_RED},
+			Vector2i(10, 7): {"color": BEAM_COLOR},
+		},
+		"blockers": [],
+		"mirror_budget": 1,
+		"splitter_budget": 1,
+		"filter_budget": 1,
+	},
+	# Puzzle 32: Split, focus to break shadow, mirror the other half.
+	{
+		"name": "Siege",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": BEAM_COLOR},
+			Vector2i(10, 7): {"color": BEAM_COLOR},
+		},
+		"blockers": [],
+		"shadow_blocks": [{"pos": Vector2i(7, 4), "threshold": 0.75}],
+		"mirror_budget": 1,
+		"splitter_budget": 1,
+		"lens_budget": 1,
+	},
+	# Puzzle 33: Three blockers create a weaving path.
+	{
+		"name": "Weave",
+		"sources": [{"pos": Vector2i(1, 3), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {Vector2i(10, 5): {"color": BEAM_COLOR}},
+		"blockers": [Vector2i(5, 3), Vector2i(5, 5)],
+		"mirror_budget": 2,
+	},
+	# Puzzle 34: Split + lens + shadow — manage intensity through the chain.
+	{
+		"name": "Fortify",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": BEAM_COLOR, "intensity": 0.75},
+			Vector2i(10, 7): {"color": BEAM_COLOR},
+		},
+		"blockers": [],
+		"shadow_blocks": [{"pos": Vector2i(8, 4), "threshold": 0.75}],
+		"mirror_budget": 1,
+		"splitter_budget": 1,
+		"lens_budget": 1,
+	},
+	# Puzzle 35: Null emitter in the center, route around with mirrors.
+	{
+		"name": "Void Path",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {Vector2i(10, 4): {"color": BEAM_COLOR}},
+		"blockers": [],
+		"null_emitters": [Vector2i(6, 3)],
+		"mirror_budget": 2,
+	},
+	# Puzzle 36: Prism + filter — extract green from the split, keep red and blue.
+	{
+		"name": "Chromatic",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 1): {"color": C_RED},
+			Vector2i(10, 4): {"color": C_GREEN},
+			Vector2i(10, 7): {"color": C_BLUE},
+		},
+		"blockers": [],
+		"mirror_budget": 2,
+		"prism_budget": 1,
+		"filter_budget": 1,
+	},
+	# Puzzle 37: Prism + splitter + shade — multi-step color routing.
+	{
+		"name": "Cascade",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 1): {"color": C_RED},
+			Vector2i(10, 4): {"color": C_GREEN},
+			Vector2i(10, 7): {"color": C_GREEN},
+		},
+		"blockers": [],
+		"chromatic_shades": [{"pos": Vector2i(7, 4), "color": C_GREEN}],
+		"mirror_budget": 2,
+		"prism_budget": 1,
+		"splitter_budget": 1,
+	},
+	# Puzzle 38: Prism + convex lens to boost green beam to intensity target.
+	{
+		"name": "Resonance",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 0.5}],
+		"targets": {
+			Vector2i(10, 1): {"color": C_RED},
+			Vector2i(10, 4): {"color": C_GREEN, "intensity": 0.75},
+		},
+		"blockers": [],
+		"mirror_budget": 1,
+		"prism_budget": 1,
+		"lens_budget": 1,
+	},
+	# Puzzle 39: Shadow + shade + prism — destroy two enemies on the way.
+	{
+		"name": "Nexus",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": C_GREEN},
+			Vector2i(10, 1): {"color": C_RED},
+			Vector2i(10, 7): {"color": C_BLUE},
+		},
+		"blockers": [],
+		"shadow_blocks": [{"pos": Vector2i(7, 4), "threshold": 0.75}],
+		"chromatic_shades": [{"pos": Vector2i(7, 7), "color": C_BLUE}],
+		"mirror_budget": 2,
+		"prism_budget": 1,
+	},
+	# Puzzle 40: The finale — prism + splitter + lens + shadow + intensity.
+	{
+		"name": "Lumatical",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": C_GREEN, "intensity": 0.75},
+			Vector2i(10, 1): {"color": C_RED},
+			Vector2i(10, 7): {"color": C_GREEN},
+		},
+		"blockers": [],
+		"shadow_blocks": [{"pos": Vector2i(8, 4), "threshold": 0.75}],
+		"mirror_budget": 2,
 		"prism_budget": 1,
 		"splitter_budget": 1,
 		"lens_budget": 1,
