@@ -30,6 +30,8 @@ var prisms: Dictionary = {}    # Vector2i -> int (0=default, 1=flipped)
 var filters: Dictionary = {}   # Vector2i -> int color index (0=R, 1=G, 2=B)
 var splitters: Dictionary = {} # Vector2i -> int (0=split-right, 1=split-left)
 var lenses: Dictionary = {}    # Vector2i -> int (0=convex/focus, 1=concave/spread)
+var refractors: Dictionary = {} # Vector2i -> int (0=cw, 1=ccw)
+var teleporters: Dictionary = {} # Vector2i -> int (0=first portal, 1=second portal)
 
 # How many of each tool the player is allowed to place
 var mirror_budget: int = 2
@@ -37,9 +39,11 @@ var prism_budget: int = 0
 var filter_budget: int = 0
 var splitter_budget: int = 0
 var lens_budget: int = 0
+var refractor_budget: int = 0
+var teleporter_budget: int = 0
 
 # Currently selected tool for placement
-# 0=mirror, 1=prism, 2=filter, 3=splitter, 4=lens
+# 0=mirror, 1=prism, 2=filter, 3=splitter, 4=lens, 5=refractor, 6=teleporter
 var active_tool: int = 0
 
 # Runtime — updated by the controller after simulation
@@ -59,6 +63,8 @@ const C_PRISM := Color(1.0, 0.0, 0.9)             # #ff00e5 neon magenta
 const C_FILTER := Color(1.0, 0.9, 0.0)           # #ffe600 neon yellow
 const C_SPLITTER := Color(1.0, 0.53, 0.0)        # #ff8800 neon orange
 const C_LENS := Color(0.67, 0.4, 1.0)            # #aa66ff neon violet
+const C_REFRACTOR := Color(0.5, 1.0, 0.8)        # #80ffcc neon teal
+const C_TELEPORTER := Color(0.9, 0.5, 1.0)       # #e680ff neon pink-purple
 const C_BLOCKER := Color(0.18, 0.18, 0.22)
 const C_SHADOW := Color(0.12, 0.05, 0.15)         # Dark purple-black
 const C_SHADE := Color(0.4, 0.4, 0.55, 0.25)      # Ghostly neutral
@@ -99,6 +105,8 @@ func _draw() -> void:
 	_draw_targets()
 	_draw_splitters()
 	_draw_lenses()
+	_draw_refractors()
+	_draw_teleporters()
 	_draw_filters()
 	_draw_prisms()
 	_draw_mirrors()
@@ -316,6 +324,59 @@ func _draw_lenses() -> void:
 			draw_arc(c + Vector2(0, s * 0.3), s * 0.7, PI, TAU, 16, C_LENS, 2.5)
 
 
+func _draw_refractors() -> void:
+	for pos in refractors:
+		var orient: int = int(refractors[pos])
+		var c := _cell_center(pos)
+		var s := cell_size * 0.32
+		# Glow halo
+		draw_circle(c, cell_size * 0.4, Color(C_REFRACTOR.r, C_REFRACTOR.g, C_REFRACTOR.b, 0.04))
+		# Draw a square with a curved arrow indicating turn direction
+		var pts := PackedVector2Array([
+			c + Vector2(-s, -s), c + Vector2(s, -s),
+			c + Vector2(s, s), c + Vector2(-s, s),
+		])
+		for i in range(4):
+			draw_line(pts[i], pts[(i + 1) % 4], C_REFRACTOR, 2.5)
+		# Arrow: clockwise or counterclockwise arc in center
+		var arrow_col := C_REFRACTOR.lerp(Color.WHITE, 0.3)
+		if orient == 0:  # CW
+			draw_arc(c, s * 0.45, -PI / 2, PI, 12, arrow_col, 2.0)
+			# Arrowhead at end
+			var tip := c + Vector2(cos(PI), sin(PI)) * s * 0.45
+			draw_line(tip, tip + Vector2(-4, -4), arrow_col, 2.0)
+			draw_line(tip, tip + Vector2(4, -4), arrow_col, 2.0)
+		else:  # CCW
+			draw_arc(c, s * 0.45, 0, PI * 1.5, 12, arrow_col, 2.0)
+			var tip := c + Vector2(cos(PI * 1.5), sin(PI * 1.5)) * s * 0.45
+			draw_line(tip, tip + Vector2(-4, 4), arrow_col, 2.0)
+			draw_line(tip, tip + Vector2(4, 4), arrow_col, 2.0)
+
+
+func _draw_teleporters() -> void:
+	# Teleporters are stored as individual cells with an index (0 or 1).
+	# Draw a glowing ring portal at each, linked by matching color.
+	var portals: Array = teleporters.keys()
+	for pos in portals:
+		var portal_idx: int = int(teleporters[pos])
+		var c := _cell_center(pos)
+		var r := cell_size * 0.28
+		var pulse := 1.0 + sin(_time * 2.5 + portal_idx * PI) * 0.15
+		# Glow halo
+		draw_circle(c, r * 2.0 * pulse, Color(C_TELEPORTER.r, C_TELEPORTER.g, C_TELEPORTER.b, 0.04))
+		# Outer ring
+		draw_arc(c, r * pulse, 0, TAU, 32, C_TELEPORTER, 2.5)
+		# Inner ring — slightly smaller, opposite pulse phase
+		draw_arc(c, r * 0.6 * (2.0 - pulse), 0, TAU, 24, Color(C_TELEPORTER.r, C_TELEPORTER.g, C_TELEPORTER.b, 0.5), 1.5)
+		# Portal index dot — 1 dot for portal 0, 2 dots for portal 1
+		var dot_r := r * 0.12
+		if portal_idx == 0:
+			draw_circle(c + Vector2(0, r * 0.7), dot_r, C_TELEPORTER)
+		else:
+			draw_circle(c + Vector2(-r * 0.3, r * 0.7), dot_r, C_TELEPORTER)
+			draw_circle(c + Vector2(r * 0.3, r * 0.7), dot_r, C_TELEPORTER)
+
+
 func _draw_sources() -> void:
 	for src in sources:
 		var c := _cell_center(src["pos"])
@@ -352,6 +413,8 @@ func _draw_hover() -> void:
 		2: base = C_FILTER
 		3: base = C_SPLITTER
 		4: base = C_LENS
+		5: base = C_REFRACTOR
+		6: base = C_TELEPORTER
 		_: base = Color(1, 1, 1)
 	draw_rect(Rect2(c.x - s / 2.0, c.y - s / 2.0, s, s), Color(base.r, base.g, base.b, 0.1), true)
 
@@ -379,6 +442,8 @@ func clear_tools() -> void:
 	filters.clear()
 	splitters.clear()
 	lenses.clear()
+	refractors.clear()
+	teleporters.clear()
 	tools_changed.emit()
 	queue_redraw()
 
@@ -429,6 +494,16 @@ func _unhandled_input(event: InputEvent) -> void:
 					active_tool = 4
 					tools_changed.emit()
 					queue_redraw()
+			KEY_6:
+				if refractor_budget > 0:
+					active_tool = 5
+					tools_changed.emit()
+					queue_redraw()
+			KEY_7:
+				if teleporter_budget > 0:
+					active_tool = 6
+					tools_changed.emit()
+					queue_redraw()
 			KEY_R:
 				_rotate_hovered()
 
@@ -465,6 +540,17 @@ func _place_or_toggle(gp: Vector2i) -> void:
 		tools_changed.emit()
 		queue_redraw()
 		return
+	if refractors.has(gp):
+		refractors[gp] = 1 - int(refractors[gp])
+		tools_changed.emit()
+		queue_redraw()
+		return
+	if teleporters.has(gp):
+		# Toggle portal index 0 -> 1
+		teleporters[gp] = 1 - int(teleporters[gp])
+		tools_changed.emit()
+		queue_redraw()
+		return
 
 	# Place new tool of the active type
 	match active_tool:
@@ -488,6 +574,16 @@ func _place_or_toggle(gp: Vector2i) -> void:
 			if lenses.size() >= lens_budget:
 				return
 			lenses[gp] = 0
+		5:  # Refractor
+			if refractors.size() >= refractor_budget:
+				return
+			refractors[gp] = 0
+		6:  # Teleporter
+			if teleporters.size() >= teleporter_budget:
+				return
+			# Assign next portal index: 0 for first, 1 for second
+			var existing_indices: Array = teleporters.values()
+			teleporters[gp] = 0 if not 0 in existing_indices else 1
 
 	tools_changed.emit()
 	queue_redraw()
@@ -509,6 +605,12 @@ func _remove(gp: Vector2i) -> void:
 		changed = true
 	if lenses.has(gp):
 		lenses.erase(gp)
+		changed = true
+	if refractors.has(gp):
+		refractors.erase(gp)
+		changed = true
+	if teleporters.has(gp):
+		teleporters.erase(gp)
 		changed = true
 	if changed:
 		tools_changed.emit()
@@ -534,6 +636,14 @@ func _rotate_hovered() -> void:
 		queue_redraw()
 	elif lenses.has(_hovered_cell):
 		lenses[_hovered_cell] = 1 - int(lenses[_hovered_cell])
+		tools_changed.emit()
+		queue_redraw()
+	elif refractors.has(_hovered_cell):
+		refractors[_hovered_cell] = 1 - int(refractors[_hovered_cell])
+		tools_changed.emit()
+		queue_redraw()
+	elif teleporters.has(_hovered_cell):
+		teleporters[_hovered_cell] = 1 - int(teleporters[_hovered_cell])
 		tools_changed.emit()
 		queue_redraw()
 

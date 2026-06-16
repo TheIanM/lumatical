@@ -1,24 +1,31 @@
-# Task List — Aesthetics Polish
+# Task List — New Tools & Puzzles
 
 ## Goal
-Add main menu, solve animation, and visual transitions to make the game
-feel polished and complete before expanding content.
+Add 2 new tools from the GDD's open question list, then puzzles using them.
+Keeping it to 2 tools to stay focused — pick the most impactful, least punishing.
+
+## Tools Selected
+1. **Refractor Cube** — Bends a beam 90° clockwise regardless of entry angle.
+   Simpler than a mirror but less flexible. Great for teaching routing basics
+   and creating "one way" puzzle constraints.
+2. **Teleporter** — Beam enters one portal, exits the other at same direction.
+   Opens spatial puzzles across the grid. Two linked portals placed as a pair.
+
+## Tools Deferred
+- Color Mixer — requires two converging beams, complex for prototype
+- Timer Gate — adds timing element, user wants non-punishing
 
 ## Steps
-1. Main menu — LUMATICAL title, Play, Level Editor, How to Play
-   → verify: can navigate menu → game → editor
-2. Puzzle selection screen — scroll through available puzzles
-   → verify: can pick any puzzle
-3. Solve cascade animation — beams brighten from source outward before overlay
-   → verify: solving feels rewarding
-4. Smooth puzzle transitions — fade between levels
-   → verify: transitions feel natural
-5. UI polish — consistent fonts, spacing, button styles
-   → verify: everything reads clean
+1. BeamSimulator: add refractor + teleporter handling
+   → verify: unit trace through each tool type
+2. Grid: add drawing + input for both tools (KEY_6, KEY_7)
+   → verify: can place/remove/rotate
+3. Main: add toolbelt entries, tools dict, new puzzles
+   → verify: puzzles solvable
+4. Run end-to-end
 
 ## Status
-- [x] Main menu
-- [x] Puzzle selection
-- [x] Solve cascade
-- [x] Puzzle transitions
-- [x] UI polish
+- [ ] Refractor Cube (simulator + grid + main)
+- [ ] Teleporter (simulator + grid + main)
+- [ ] New puzzles (41-50)
+- [ ] End-to-end test

@@ -63,6 +63,8 @@ const MIN_INTENSITY := 0.05
 ##   - Filter:  {"type": "filter", "color": Color}
 ##   - Splitter:{"type": "splitter", "orientation": 0|1}
 ##   - Lens:    {"type": "lens", "orientation": 0|1}  (0=convex/focus, 1=concave/spread)
+##   - Refractor: {"type": "refractor", "orientation": 0|1}  (0=cw 90°, 1=ccw 90°)
+##   - Teleporter: {"type": "teleporter", "pair": Vector2i}  (linked portal)
 ##   - ShadowBlock: {"type": "shadow_block", "threshold": float}
 ##   - ChromShade:  {"type": "chromatic_shade", "color": Color}
 ##   - NullEmitter: {"type": "null_emitter"}
@@ -214,6 +216,17 @@ static func _trace_single_beam(
 					intensity = intensity * (1.5 if lens_orient == 0 else 0.5)
 					pos = next_pos
 					segment_start = next_pos
+				"refractor":
+					# 90° turn regardless of entry angle
+					var r_orient: int = int(tool.get("orientation", 0))
+					direction = _turn_right(direction) if r_orient == 0 else _turn_left(direction)
+					pos = next_pos
+					segment_start = next_pos
+				"teleporter":
+					# Beam exits at the paired portal, same direction
+					var pair_pos: Vector2i = tool.get("pair", next_pos)
+					pos = pair_pos
+					segment_start = pair_pos
 				"target":
 					# Target absorbs the beam; only counts as hit if color matches
 					# and intensity meets the target's minimum (if specified).

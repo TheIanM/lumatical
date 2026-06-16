@@ -510,6 +510,107 @@ const LEVELS := [
 		"splitter_budget": 1,
 		"lens_budget": 1,
 	},
+	# ── Chapter VII: New Tools ──
+	# Puzzle 41: First refractor — a simple 90° turn.
+	{
+		"name": "Turnstyle",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {Vector2i(4, 7): {"color": BEAM_COLOR}},
+		"blockers": [],
+		"refractor_budget": 1,
+	},
+	# Puzzle 42: Refractor instead of mirror — works from any direction.
+	{
+		"name": "Omniturn",
+		"sources": [{"pos": Vector2i(2, 1), "direction": Vector2i(0, 1), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {Vector2i(9, 6): {"color": BEAM_COLOR}},
+		"blockers": [Vector2i(2, 6)],
+		"refractor_budget": 2,
+	},
+	# Puzzle 43: First teleporter — beam warps across the grid.
+	{
+		"name": "Warp",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {Vector2i(10, 4): {"color": BEAM_COLOR}},
+		"blockers": [Vector2i(5, 4), Vector2i(6, 4), Vector2i(7, 4)],
+		"teleporter_budget": 2,
+	},
+	# Puzzle 44: Refractor + mirror — route through a narrow gap.
+	{
+		"name": "Sluice",
+		"sources": [{"pos": Vector2i(1, 2), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {Vector2i(10, 5): {"color": BEAM_COLOR}},
+		"blockers": [Vector2i(5, 2), Vector2i(5, 3), Vector2i(5, 5), Vector2i(5, 6)],
+		"mirror_budget": 1,
+		"refractor_budget": 1,
+	},
+	# Puzzle 45: Teleporter + prism — warp colored beams separately.
+	{
+		"name": "Spectrum Warp",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 1): {"color": C_RED},
+			Vector2i(10, 7): {"color": C_BLUE},
+		},
+		"blockers": [],
+		"mirror_budget": 1,
+		"prism_budget": 1,
+		"teleporter_budget": 2,
+	},
+	# Puzzle 46: Refractor + splitter — turn one beam, split another.
+	{
+		"name": "Branch",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 4): {"color": BEAM_COLOR},
+			Vector2i(5, 7): {"color": BEAM_COLOR},
+		},
+		"blockers": [],
+		"refractor_budget": 1,
+		"splitter_budget": 1,
+	},
+	# Puzzle 47: Teleporter skips a wall of blockers.
+	{
+		"name": "Leap",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {Vector2i(10, 4): {"color": BEAM_COLOR}},
+		"blockers": [Vector2i(5, 1), Vector2i(5, 2), Vector2i(5, 3), Vector2i(5, 4), Vector2i(5, 5), Vector2i(5, 6), Vector2i(5, 7)],
+		"teleporter_budget": 2,
+	},
+	# Puzzle 48: Refractor + lens — focus then turn 90°.
+	{
+		"name": "Corner Focus",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 0.5}],
+		"targets": {Vector2i(8, 1): {"color": BEAM_COLOR, "intensity": 0.75}},
+		"blockers": [],
+		"lens_budget": 1,
+		"refractor_budget": 1,
+	},
+	# Puzzle 49: Teleporter + shadow block — warp a focused beam through.
+	{
+		"name": "Warp Siege",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 0.5}],
+		"targets": {Vector2i(10, 4): {"color": BEAM_COLOR}},
+		"blockers": [],
+		"shadow_blocks": [{"pos": Vector2i(8, 4), "threshold": 0.75}],
+		"lens_budget": 1,
+		"teleporter_budget": 2,
+	},
+	# Puzzle 50: Everything — prism + teleporter + refractor + shadow.
+	{
+		"name": "Singularity",
+		"sources": [{"pos": Vector2i(1, 4), "direction": Vector2i(1, 0), "color": BEAM_COLOR, "intensity": 1.0}],
+		"targets": {
+			Vector2i(10, 1): {"color": C_RED},
+			Vector2i(10, 4): {"color": C_GREEN},
+			Vector2i(10, 7): {"color": C_BLUE},
+		},
+		"blockers": [Vector2i(5, 4)],
+		"mirror_budget": 2,
+		"prism_budget": 1,
+		"refractor_budget": 1,
+		"teleporter_budget": 2,
+	},
 ]
 
 var _current_level := 0
@@ -529,13 +630,15 @@ var _next_button: Button
 var _toolbelt: HBoxContainer
 var _tool_buttons: Array = []
 
-const TOOL_NAMES := ["Mirror", "Prism", "Filter", "Splitter", "Lens"]
+const TOOL_NAMES := ["Mirror", "Prism", "Filter", "Splitter", "Lens", "Refractor", "Teleport"]
 const TOOL_COLORS := [
 	Color(0.0, 0.94, 1.0),   # Mirror — cyan
 	Color(1.0, 0.0, 0.9),    # Prism — magenta
 	Color(1.0, 0.9, 0.0),    # Filter — yellow
 	Color(1.0, 0.53, 0.0),   # Splitter — orange
 	Color(0.67, 0.4, 1.0),   # Lens — violet
+	Color(0.5, 1.0, 0.8),    # Refractor — teal
+	Color(0.9, 0.5, 1.0),    # Teleporter — pink-purple
 ]
 
 
@@ -635,10 +738,10 @@ func _create_toolbelt() -> void:
 	_toolbelt.add_theme_constant_override("separation", 8)
 	ui.add_child(_toolbelt)
 
-	for i in range(5):
+	for i in range(7):
 		var btn := Button.new()
 		btn.text = "[%d] %s" % [i + 1, TOOL_NAMES[i]]
-		btn.custom_minimum_size = Vector2(150, 56)
+		btn.custom_minimum_size = Vector2(140, 56)
 		btn.add_theme_font_size_override("font_size", 16)
 		btn.pressed.connect(_on_toolbelt_button.bind(i))
 		_toolbelt.add_child(btn)
@@ -680,6 +783,8 @@ func _update_toolbelt() -> void:
 		LEVELS[_current_level].get("filter_budget", 0),
 		LEVELS[_current_level].get("splitter_budget", 0),
 		LEVELS[_current_level].get("lens_budget", 0),
+		LEVELS[_current_level].get("refractor_budget", 0),
+		LEVELS[_current_level].get("teleporter_budget", 0),
 	]
 	var used := [
 		grid.mirrors.size(),
@@ -687,9 +792,11 @@ func _update_toolbelt() -> void:
 		grid.filters.size(),
 		grid.splitters.size(),
 		grid.lenses.size(),
+		grid.refractors.size(),
+		grid.teleporters.size(),
 	]
 
-	for i in range(5):
+	for i in range(7):
 		var btn: Button = _tool_buttons[i]
 		if budgets[i] == 0:
 			btn.visible = false
@@ -725,12 +832,16 @@ func _load_level(index: int) -> void:
 	grid.filter_budget = level.get("filter_budget", 0)
 	grid.splitter_budget = level.get("splitter_budget", 0)
 	grid.lens_budget = level.get("lens_budget", 0)
+	grid.refractor_budget = level.get("refractor_budget", 0)
+	grid.teleporter_budget = level.get("teleporter_budget", 0)
 	grid.active_tool = 0
 	grid.mirrors.clear()
 	grid.prisms.clear()
 	grid.filters.clear()
 	grid.splitters.clear()
 	grid.lenses.clear()
+	grid.refractors.clear()
+	grid.teleporters.clear()
 	grid._destroyed_enemies.clear()
 	grid.queue_redraw()
 
@@ -808,6 +919,17 @@ func _build_tools_dict() -> Dictionary:
 		d[pos] = {"type": "splitter", "orientation": int(grid.splitters[pos])}
 	for pos in grid.lenses:
 		d[pos] = {"type": "lens", "orientation": int(grid.lenses[pos])}
+	for pos in grid.refractors:
+		d[pos] = {"type": "refractor", "orientation": int(grid.refractors[pos])}
+	# Teleporters — find the paired portal for each
+	var tp_positions: Array = grid.teleporters.keys()
+	for pos in grid.teleporters:
+		var pair_pos: Vector2i = pos
+		for other in tp_positions:
+			if other != pos:
+				pair_pos = other
+				break
+		d[pos] = {"type": "teleporter", "pair": pair_pos}
 	return d
 
 
