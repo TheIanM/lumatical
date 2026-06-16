@@ -26,18 +26,24 @@ const TIER_ENEMIES := ["mirror", "prism", "filter", "splitter", "lens", "refract
 
 ## Generate a puzzle for the given floor number (1-based).
 ## Returns a level Dictionary matching the LEVELS format.
-static func generate(floor_num: int) -> Dictionary:
-	return _generate_internal(floor_num, 0)
+## [param seed_val] — if provided, generation is deterministic.
+static func generate(floor_num: int, seed_val: int = -1) -> Dictionary:
+	return _generate_internal(floor_num, 0, seed_val)
 
 
-static func _generate_internal(floor_num: int, depth: int) -> Dictionary:
+static func _generate_internal(floor_num: int, depth: int, seed_val: int = -1) -> Dictionary:
 	# Guard against infinite recursion — if we fail 20 times, fall back
 	# to a guaranteed-simple mirror puzzle so the game never softlocks.
 	if depth >= 20:
 		return _fallback_puzzle(floor_num)
 
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash("floor_%d_%d" % [floor_num, randi()])
+	if seed_val >= 0:
+		# Deterministic: seed combines the run seed + floor number
+		# so each floor is different but the sequence is reproducible
+		rng.seed = seed_val ^ (floor_num * 2654435761)
+	else:
+		rng.seed = hash("floor_%d_%d" % [floor_num, randi()])
 
 	var params := _difficulty_params(floor_num, rng)
 
@@ -86,7 +92,7 @@ static func _generate_internal(floor_num: int, depth: int) -> Dictionary:
 
 	# If we couldn't find enough targets, retry
 	if targets.size() < params.target_count:
-		return _generate_internal(floor_num, depth + 1)
+		return _generate_internal(floor_num, depth + 1, seed_val)
 
 	# Step 5: Build the puzzle — strip tools, set budgets
 	var level := {
@@ -128,7 +134,7 @@ static func _generate_internal(floor_num: int, depth: int) -> Dictionary:
 	# targets are still reachable even with blockers/enemies placed.
 	# This is the same pattern as the level editor's _run_validation().
 	if not _validate(level, tools, source):
-		return _generate_internal(floor_num, depth + 1)
+		return _generate_internal(floor_num, depth + 1, seed_val)
 
 	return level
 

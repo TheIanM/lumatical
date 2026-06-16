@@ -1,36 +1,28 @@
-# Task List — Roguelike Puzzle Generator
+# Task List — Leaderboards, Seeded Runs, and Share Codes
 
 ## Goal
-Solution-first puzzle generator with difficulty scaling, for the
-procedural roguelike mode described in the GDD.
+Add daily seeded runs, local leaderboard persistence, and share codes
+that encode the run seed.
 
-## Design (from GDD §09)
-The generator never needs to *solve* a puzzle — it *constructs* one from
-a known solution:
-1. Place a source at a random position/direction
-2. Place N random tools to route the beam (the solution)
-3. Run BeamSimulator to trace beam paths
-4. Place targets at beam endpoints (with matching colors)
-5. Strip solution tools, set budget = solution tool count
-6. Optionally add enemies/blockers for difficulty
-
-Guaranteed solvable by construction.
-
-## Difficulty Tiers
-- **Easy** (floors 1-5): 1-2 tools, 1 target, mirrors only
-- **Normal** (floors 6-15): 2-3 tools, 1-2 targets, + prisms/filters
-- **Hard** (floors 16-30): 3-4 tools, 2-3 targets, + splitters/lenses
-- **Brutal** (floors 31+): 4-5 tools, 2-3 targets, + enemies
+## Design
+- **Seed**: integer that drives PuzzleGenerator deterministically.
+  Daily run seed = hash of today's date. Share code = seed encoded as
+  6-character base36 string.
+- **RunManager**: singleton that persists scores to user://leaderboard.json,
+  generates daily seeds, and encodes/decodes share codes.
+- **Roguelike modes**: endless (random), daily (seeded), shared (from code).
+- **Leaderboard**: top 10 scores with mode, floor, date. Shown on menu.
 
 ## Steps
-1. PuzzleGenerator core — place solution, simulate, extract targets
-   → verify: generated puzzles are solvable
-2. Difficulty scaling — parameters per floor
-3. Roguelike scene — floor counter, score, next-floor flow
-4. Run modifiers (stretch goal)
+1. PuzzleGenerator: accept seed param
+2. RunManager: score persistence + share codes + daily seeds
+3. Roguelike: accept mode + seed, track and submit score
+4. Menu: daily run + share code entry + leaderboard screen
+5. Test
 
 ## Status
-- [x] PuzzleGenerator core
-- [x] Difficulty scaling
-- [x] Roguelike scene
-- [x] End-to-end test
+- [x] PuzzleGenerator seeded generation
+- [x] RunManager
+- [x] Roguelike mode support
+- [x] Menu UI
+- [x] Test

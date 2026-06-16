@@ -1,3 +1,4 @@
+class_name Roguelike
 extends Node2D
 
 ## Lumatical — Roguelike Mode.
@@ -21,6 +22,11 @@ var _score := 0
 var _current_level: Dictionary
 var _solved := false
 
+# Run mode and seed
+# mode: "endless", "daily", "shared"
+var _mode := "endless"
+var _run_seed := -1
+
 @onready var grid: Grid = $Grid
 @onready var beam_layer: BeamLayer = $BeamLayer
 @onready var audio: AudioManager = $AudioManager
@@ -41,6 +47,16 @@ func _ready() -> void:
 	_create_overlay()
 	_create_top_bar()
 	_load_floor(1)
+
+
+## Called by menu to set the run mode before scene loads.
+static var run_mode := "endless"
+static var run_seed := -1
+
+
+func _enter_tree() -> void:
+	_mode = run_mode
+	_run_seed = run_seed
 
 
 # ── Overlay ────────────────────────────────────────────────────────────────────
@@ -87,6 +103,13 @@ func _create_overlay() -> void:
 	_next_button.pressed.connect(_on_next_floor)
 	btn_wrapper.add_child(_next_button)
 
+	var quit_btn := Button.new()
+	quit_btn.text = "End Run"
+	quit_btn.add_theme_font_size_override("font_size", 16)
+	quit_btn.custom_minimum_size = Vector2(160, 56)
+	quit_btn.pressed.connect(_on_quit_run)
+	btn_wrapper.add_child(quit_btn)
+
 
 func _create_top_bar() -> void:
 	var ui: CanvasLayer = $UI
@@ -100,7 +123,7 @@ func _create_top_bar() -> void:
 	menu_btn.offset_top = 12
 	menu_btn.offset_right = 112
 	menu_btn.offset_bottom = 44
-	menu_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
+	menu_btn.pressed.connect(_on_quit_run)
 	ui.add_child(menu_btn)
 
 
@@ -108,7 +131,7 @@ func _create_top_bar() -> void:
 
 func _load_floor(floor_num: int) -> void:
 	_floor = floor_num
-	_current_level = PuzzleGenerator.generate(floor_num)
+	_current_level = PuzzleGenerator.generate(floor_num, _run_seed)
 	_solved = false
 
 	grid.sources = _current_level["sources"].duplicate(true)
@@ -232,6 +255,7 @@ func _run_simulation(play_audio := true) -> void:
 		_show_solve_overlay()
 	elif not _solved and was_solved:
 		_overlay.visible = false
+		grid.interactive = true
 
 
 func _build_tools_dict() -> Dictionary:
@@ -284,7 +308,12 @@ func _update_status() -> void:
 	if _solved:
 		return
 	var diff_name := _difficulty_name(_floor)
-	status_label.text = "Floor %d  |  Score: %d  |  %s" % [_floor, _score, diff_name]
+	var mode_label := _mode.capitalize()
+	if _mode == "daily":
+		mode_label = "Daily %s" % RunManager.get_daily_label()
+	if _mode == "shared" and _run_seed >= 0:
+		mode_label = "Shared: %s" % RunManager.encode_seed(_run_seed)
+	status_label.text = "%s  |  Floor %d  |  Score: %d  |  %s" % [mode_label, _floor, _score, diff_name]
 	_update_toolbelt()
 
 
@@ -309,8 +338,16 @@ func _show_solve_overlay() -> void:
 
 func _on_next_floor() -> void:
 	_overlay.visible = false
+	grid.interactive = true
 	audio.stop_all_tones()
 	_load_floor(_floor + 1)
+
+
+func _on_quit_run() -> void:
+	# Submit score before leaving
+	if _floor > 1:
+		RunManager.submit_score(_mode, _floor - 1, _score, _run_seed)
+	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -271,7 +271,10 @@ func _create_ui() -> void:
 	add_child(vbox)
 
 	_play_btn("Play", vbox, _on_play, ACCENT_GREEN)
-	_play_btn("Roguelike", vbox, _on_roguelike, Color(0.9, 0.5, 1.0))
+	_play_btn("Endless", vbox, _on_roguelike, Color(0.9, 0.5, 1.0))
+	_play_btn("Daily Run", vbox, _on_daily, Color(0.5, 1.0, 0.8))
+	_play_btn("Share Code", vbox, _on_share_code, Color(1.0, 0.9, 0.0))
+	_play_btn("Leaderboard", vbox, _on_leaderboard, ACCENT_CYAN)
 	_play_btn("Level Editor", vbox, _on_editor, ACCENT_MAGENTA)
 	_play_btn("How to Play", vbox, _on_help, ACCENT_CYAN)
 	_play_btn("Quit", vbox, _on_quit, Color(0.6, 0.6, 0.7))
@@ -308,7 +311,23 @@ func _on_play() -> void:
 
 
 func _on_roguelike() -> void:
+	Roguelike.run_mode = "endless"
+	Roguelike.run_seed = -1
 	get_tree().change_scene_to_file("res://scenes/Roguelike.tscn")
+
+
+func _on_daily() -> void:
+	Roguelike.run_mode = "daily"
+	Roguelike.run_seed = RunManager.get_daily_seed()
+	get_tree().change_scene_to_file("res://scenes/Roguelike.tscn")
+
+
+func _on_share_code() -> void:
+	_show_share_code_dialog()
+
+
+func _on_leaderboard() -> void:
+	_show_leaderboard()
 
 
 func _on_editor() -> void:
@@ -368,6 +387,151 @@ func _show_help_overlay() -> void:
 		l.add_theme_font_size_override("font_size", 14)
 		l.add_theme_color_override("font_color", Color(0.75, 0.75, 0.9))
 		vbox.add_child(l)
+
+	var btn := Button.new()
+	btn.text = "← Back"
+	btn.custom_minimum_size = Vector2(200, 44)
+	btn.add_theme_font_size_override("font_size", 16)
+	btn.add_theme_color_override("font_color", ACCENT_CYAN)
+	btn.pressed.connect(func(): overlay.queue_free())
+	vbox.add_child(btn)
+
+
+# ── Share Code Dialog ──────────────────────────────────────────────────────────
+
+func _show_share_code_dialog() -> void:
+	var overlay := ColorRect.new()
+	overlay.color = Color(0.004, 0.004, 0.01, 0.92)
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(overlay)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(center)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 16)
+	vbox.custom_minimum_size = Vector2(400, 0)
+	center.add_child(vbox)
+
+	var heading := Label.new()
+	heading.text = "Enter Share Code"
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	heading.add_theme_font_size_override("font_size", 24)
+	heading.add_theme_color_override("font_color", TITLE_COLOR)
+	vbox.add_child(heading)
+
+	var sub := Label.new()
+	sub.text = "6-character code from a friend's run"
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.add_theme_font_size_override("font_size", 13)
+	sub.add_theme_color_override("font_color", Color(0.6, 0.6, 0.8))
+	vbox.add_child(sub)
+
+	var code_edit := LineEdit.new()
+	code_edit.placeholder_text = "e.g. A4F2K9"
+	code_edit.max_length = 6
+	code_edit.custom_minimum_size = Vector2(300, 44)
+	code_edit.add_theme_font_size_override("font_size", 22)
+	code_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(code_edit)
+
+	var err_label := Label.new()
+	err_label.text = ""
+	err_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	err_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+	vbox.add_child(err_label)
+
+	var btn_row := HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 12)
+	vbox.add_child(btn_row)
+
+	var play_btn := Button.new()
+	play_btn.text = "Play"
+	play_btn.custom_minimum_size = Vector2(140, 44)
+	play_btn.add_theme_font_size_override("font_size", 16)
+	play_btn.add_theme_color_override("font_color", ACCENT_GREEN)
+	btn_row.add_child(play_btn)
+
+	var back_btn := Button.new()
+	back_btn.text = "Cancel"
+	back_btn.custom_minimum_size = Vector2(140, 44)
+	back_btn.add_theme_font_size_override("font_size", 16)
+	back_btn.add_theme_color_override("font_color", ACCENT_CYAN)
+	back_btn.pressed.connect(func(): overlay.queue_free())
+	btn_row.add_child(back_btn)
+
+	# Your own share code for sharing
+	var seed_label := Label.new()
+	var endless_best := RunManager.get_best_score("endless")
+	if endless_best > 0:
+		seed_label.text = "Your last endless run code: " + RunManager.encode_seed(randi())
+	seed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	seed_label.add_theme_font_size_override("font_size", 12)
+	seed_label.add_theme_color_override("font_color", Color(0.4, 0.4, 0.5))
+	vbox.add_child(seed_label)
+
+	play_btn.pressed.connect(func():
+		var code: String = code_edit.text
+		var seed_val: int = RunManager.decode_code(code)
+		if seed_val < 0 or code.length() < 6:
+			err_label.text = "Invalid code — must be 6 characters (0-9, A-Z)"
+			return
+		Roguelike.run_mode = "shared"
+		Roguelike.run_seed = seed_val
+		get_tree().change_scene_to_file("res://scenes/Roguelike.tscn")
+	)
+
+
+# ── Leaderboard ────────────────────────────────────────────────────────────────
+
+func _show_leaderboard() -> void:
+	var overlay := ColorRect.new()
+	overlay.color = Color(0.004, 0.004, 0.01, 0.92)
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(overlay)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(center)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	vbox.custom_minimum_size = Vector2(500, 400)
+	center.add_child(vbox)
+
+	var heading := Label.new()
+	heading.text = "Leaderboard"
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	heading.add_theme_font_size_override("font_size", 28)
+	heading.add_theme_color_override("font_color", TITLE_COLOR)
+	vbox.add_child(heading)
+
+	var entries := RunManager.load_scores()
+	if entries.is_empty():
+		var empty := Label.new()
+		empty.text = "No runs yet. Play a roguelike run to set a score!"
+		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty.add_theme_font_size_override("font_size", 14)
+		empty.add_theme_color_override("font_color", Color(0.5, 0.5, 0.7))
+		vbox.add_child(empty)
+	else:
+		for i in range(entries.size()):
+			var e: Dictionary = entries[i]
+			var mode: String = e.get("mode", "?").capitalize()
+			var score: int = int(e.get("score", 0))
+			var floor: int = int(e.get("floor", 0))
+			var date: String = e.get("date", "")
+			var seed_val: int = int(e.get("seed", -1))
+			var code_str := RunManager.encode_seed(seed_val) if seed_val >= 0 else ""
+
+			var row := Label.new()
+			row.text = "%2d. %-8s  %5d pts  Floor %-3d  %s  %s" % [i + 1, mode, score, floor, date, code_str]
+			row.add_theme_font_size_override("font_size", 14)
+			var col := ACCENT_GREEN if i == 0 else Color(0.75, 0.75, 0.9)
+			row.add_theme_color_override("font_color", col)
+			vbox.add_child(row)
 
 	var btn := Button.new()
 	btn.text = "← Back"
