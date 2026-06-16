@@ -115,10 +115,61 @@ static func generate(floor_num: int) -> Dictionary:
 	if params.use_enemies:
 		_add_enemies(level, rng, params)
 
+	# Step 7: Validate — re-simulate with solution tools to confirm all
+	# targets are still reachable even with blockers/enemies placed.
+	# This is the same pattern as the level editor's _run_validation().
+	if not _validate(level, tools, source):
+		return generate(floor_num)
+
 	return level
 
 
-# ── Difficulty Parameters ─────────────────────────────────────────────────────
+# ── Validation ──────────────────────────────────────────────────────────────────
+
+## Re-simulate the puzzle with the solution tools + all fixed elements
+## to confirm every target is reachable. Returns true if all targets hit.
+static func _validate(level: Dictionary, solution_tools: Dictionary, source: Dictionary) -> bool:
+	# Build a tools dict with solution tools + all fixed elements from the level
+	var tools: Dictionary = {}
+
+	# Add targets
+	for pos in level["targets"]:
+		var tdata := {"type": "target", "color": level["targets"][pos]["color"]}
+		if level["targets"][pos].has("intensity"):
+			tdata["intensity"] = level["targets"][pos]["intensity"]
+		tools[pos] = tdata
+
+	# Add blockers
+	for pos in level.get("blockers", []):
+		tools[pos] = {"type": "blocker"}
+
+	# Add enemies
+	for sb in level.get("shadow_blocks", []):
+		tools[sb["pos"]] = {"type": "shadow_block", "threshold": float(sb.get("threshold", 0.75))}
+	for cs in level.get("chromatic_shades", []):
+		tools[cs["pos"]] = {"type": "chromatic_shade", "color": cs["color"]}
+	for pos in level.get("null_emitters", []):
+		tools[pos] = {"type": "null_emitter"}
+
+	# Add solution tools — skip any that conflict with fixed elements
+	for pos in solution_tools:
+		if tools.has(pos):
+			continue
+		tools[pos] = solution_tools[pos]
+
+	# Simulate
+	var result := BeamSimulator.simulate(
+		Vector2i(GRID_W, GRID_H),
+		tools,
+		[source],
+		CELL_SIZE,
+	)
+
+	# Check all targets are hit
+	for pos in level["targets"]:
+		if not pos in result.hit_targets:
+			return false
+	return true
 
 class DiffParams:
 	var min_tools: int = 1
