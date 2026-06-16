@@ -75,9 +75,25 @@ static func _generate_internal(floor_num: int, depth: int, seed_val: int = -1, a
 		"intensity": source_intensity,
 	}
 
-	# Step 2: Place solution tools
+	# Step 2: Place solution tools — respect inventory limits
 	var tools: Dictionary = {}
-	var solution_tool_count: int = rng.randi_range(params.min_tools, params.max_tools)
+
+	# Determine how many tools to place: the minimum of what the difficulty
+	# wants and what the player can actually afford.
+	var total_available := 0
+	if not available_tools.is_empty():
+		for ttype in available_tools:
+			total_available += int(available_tools[ttype])
+	else:
+		total_available = params.max_tools
+
+	var solution_tool_count: int = mini(
+		rng.randi_range(params.min_tools, params.max_tools),
+		maxi(1, total_available),
+	)
+
+	# Track how many of each tool type we've used vs. what's available
+	var used_counts: Dictionary = {}
 	var placed := 0
 	var attempts := 0
 	while placed < solution_tool_count and attempts < 50:
@@ -85,9 +101,21 @@ static func _generate_internal(floor_num: int, depth: int, seed_val: int = -1, a
 		var pos := Vector2i(rng.randi_range(2, GRID_W - 3), rng.randi_range(1, GRID_H - 2))
 		if tools.has(pos) or pos == source_pos:
 			continue
-		var tool_type: String = params.tool_pool[rng.randi() % params.tool_pool.size()]
+
+		# Pick a tool type the player can still afford
+		var affordable: Array = []
+		for ttype in params.tool_pool:
+			var avail: int = int(available_tools.get(ttype, 999)) if not available_tools.is_empty() else 999
+			var used: int = int(used_counts.get(ttype, 0))
+			if used < avail:
+				affordable.append(ttype)
+		if affordable.is_empty():
+			break
+
+		var tool_type: String = affordable[rng.randi() % affordable.size()]
 		var tool := _make_random_tool(tool_type, rng)
 		tools[pos] = tool
+		used_counts[tool_type] = int(used_counts.get(tool_type, 0)) + 1
 		placed += 1
 
 	# Step 3: Simulate
@@ -105,35 +133,15 @@ static func _generate_internal(floor_num: int, depth: int, seed_val: int = -1, a
 	if targets.size() < params.target_count:
 		return _generate_internal(floor_num, depth + 1, seed_val, available_tools)
 
-	# Step 5: Build the puzzle — strip tools, set budgets
+	# Step 5: Build the puzzle — strip tools, no budgets needed
+	# (roguelike scene sets budgets from player inventory)
 	var level := {
 		"name": "Floor %d" % floor_num,
 		"sources": [source],
 		"targets": targets,
 		"blockers": [],
+		"mirror_budget": 0,  # placeholder — overridden by roguelike scene
 	}
-
-	# Derive budgets from solution
-	var tool_counts: Dictionary = {}
-	for pos in tools:
-		var ttype: String = tools[pos]["type"]
-		tool_counts[ttype] = tool_counts.get(ttype, 0) + 1
-
-	# Map tool types to budget keys
-	var budget_map := {
-		"mirror": "mirror_budget", "prism": "prism_budget",
-		"filter": "filter_budget", "splitter": "splitter_budget",
-		"lens": "lens_budget", "refractor": "refractor_budget",
-		"teleporter": "teleporter_budget",
-	}
-	for ttype in tool_counts:
-		var key: String = budget_map.get(ttype, "")
-		if key != "":
-			level[key] = tool_counts[ttype]
-
-	# Ensure at least mirror_budget exists
-	if not level.has("mirror_budget"):
-		level["mirror_budget"] = 0
 
 	# Step 6: Add obstacles/enemies for difficulty
 	if params.use_blockers:

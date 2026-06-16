@@ -327,6 +327,11 @@ func _create_top_bar() -> void:
 func _load_floor(floor_num: int) -> void:
 	_floor = floor_num
 
+	# Run-end check: if the player has no tools at all, the run is over.
+	if not _has_any_tools():
+		_show_run_over()
+		return
+
 	# Generate with inventory constraints — the puzzle must be solvable
 	# using only tools the player actually has.
 	var available_tools: Dictionary = {}
