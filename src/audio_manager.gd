@@ -143,7 +143,8 @@ func _note_for(col: Color, y_pos: int) -> int:
 
 	# Map Y position (0=top=high pitch, 7=bottom=low) to scale notes.
 	# Higher grid rows = lower pitch. Wrap across octaves.
-	var index := clampi(7 - y_pos, 0, 7)
+	var max_row := 7  # GRID_H - 1 — update if grid height changes
+	var index := clampi(max_row - y_pos, 0, max_row)
 	var octave: int = index / scale.size()
 	var degree: int = scale[index % scale.size()]
 	return root + degree + octave * 12

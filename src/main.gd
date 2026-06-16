@@ -713,6 +713,7 @@ func _show_solve_overlay() -> void:
 	# Delay overlay so player sees the solved grid glowing for a moment
 	_overlay.color = Color(0.004, 0.004, 0.01, 0.0)
 	_overlay.visible = true
+	grid.interactive = false
 	_overlay.modulate.a = 0.0
 	var tween := create_tween()
 	tween.tween_interval(0.7)
@@ -835,6 +836,7 @@ func _load_level(index: int) -> void:
 	grid.refractor_budget = level.get("refractor_budget", 0)
 	grid.teleporter_budget = level.get("teleporter_budget", 0)
 	grid.active_tool = 0
+	grid.interactive = true
 	grid.mirrors.clear()
 	grid.prisms.clear()
 	grid.filters.clear()
@@ -846,7 +848,7 @@ func _load_level(index: int) -> void:
 	grid.queue_redraw()
 
 	status_label.remove_theme_color_override("font_color")
-	_run_simulation()
+	_run_simulation(false)
 	_update_status()
 	audio.stop_all_tones()
 
@@ -855,7 +857,7 @@ func _on_tools_changed() -> void:
 	_update_status()
 
 
-func _run_simulation() -> void:
+func _run_simulation(play_audio := true) -> void:
 	var tools := _build_tools_dict()
 
 	var result := BeamSimulator.simulate(
@@ -881,7 +883,7 @@ func _run_simulation() -> void:
 			var ttype: String = tools[end_grid]["type"]
 			if ttype in ["mirror", "prism", "filter", "splitter", "lens", "target"]:
 				hits.append({"color": seg.color, "y_pos": end_grid.y})
-	if not hits.is_empty():
+	if not hits.is_empty() and play_audio:
 		audio.play_interaction_notes(hits)
 
 	# Win detection — show overlay on transition to solved
@@ -892,6 +894,7 @@ func _run_simulation() -> void:
 		_show_solve_overlay()
 	elif not _solved and was_solved:
 		_overlay.visible = false
+		grid.interactive = true
 
 
 func _build_tools_dict() -> Dictionary:
@@ -934,6 +937,8 @@ func _build_tools_dict() -> Dictionary:
 
 
 func _check_win(hit_targets: Array) -> bool:
+	if grid.targets.is_empty():
+		return false
 	for pos in grid.targets:
 		if not pos in hit_targets:
 			return false

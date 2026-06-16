@@ -73,6 +73,7 @@ const C_NULL_FIELD := Color(0.02, 0.0, 0.04, 0.35) # Dead zone overlay
 const C_HOVER := Color(1, 1, 1, 0.06)
 
 var _time: float = 0.0
+var interactive: bool = true  # Set false when overlay is showing
 
 # Filter colors — indexed by the int stored in `filters`
 const FILTER_COLORS := [
@@ -402,7 +403,7 @@ func _draw_sources() -> void:
 func _draw_hover() -> void:
 	if not _in_bounds(_hovered_cell):
 		return
-	if targets.has(_hovered_cell) or blockers.has(_hovered_cell) or _is_source(_hovered_cell):
+	if _is_blocked_cell(_hovered_cell):
 		return
 	var c := _cell_center(_hovered_cell)
 	var s := cell_size * 0.92
@@ -451,6 +452,8 @@ func clear_tools() -> void:
 # ── Input ────────────────────────────────────────────────────────────────────
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not interactive:
+		return
 	if event is InputEventMouseMotion:
 		var old := _hovered_cell
 		_hovered_cell = _world_to_grid(to_local(get_global_mouse_position()))
@@ -509,8 +512,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _place_or_toggle(gp: Vector2i) -> void:
-	# Can't place on fixed elements
-	if targets.has(gp) or blockers.has(gp) or _is_source(gp):
+	if _is_blocked_cell(gp):
 		return
 
 	# If a tool is already here, toggle its orientation/color
@@ -654,6 +656,26 @@ func _is_source(gp: Vector2i) -> bool:
 	for src in sources:
 		if src["pos"] == gp:
 			return true
+	return false
+
+
+## Returns true if this cell has a fixed element (source, target, blocker,
+## or any enemy type). Player tools cannot be placed on these cells.
+func _is_blocked_cell(gp: Vector2i) -> bool:
+	if _is_source(gp):
+		return true
+	if targets.has(gp):
+		return true
+	if gp in blockers:
+		return true
+	for sb in shadow_blocks:
+		if sb["pos"] == gp:
+			return true
+	for cs in chromatic_shades:
+		if cs["pos"] == gp:
+			return true
+	if gp in null_emitters:
+		return true
 	return false
 
 

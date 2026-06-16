@@ -360,7 +360,7 @@ func _show_help_overlay() -> void:
 		"◆  Chromatic shades block all colors except their weakness.",
 		"◆  Null emitters cancel all light in a 3×3 area.",
 		"",
-		"◆  [1]-[5] select tools    [M] mute    [Enter] advance",
+		"◆  [1]-[7] select tools    [R] rotate/cycle    [M] mute    [Enter] advance",
 	]
 	for line in lines:
 		var l := Label.new()

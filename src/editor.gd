@@ -22,6 +22,8 @@ enum Pal {
 	BLOCKER, SHADOW_BLOCK, SHADE_RED, SHADE_GREEN, SHADE_BLUE, NULL_EMITTER,
 	SOL_MIRROR, SOL_PRISM, SOL_FILTER_R, SOL_FILTER_G, SOL_FILTER_B,
 	SOL_SPLITTER, SOL_LENS_CONVEX, SOL_LENS_CONCAVE,
+	SOL_REFRACTOR_CW, SOL_REFRACTOR_CCW,
+	SOL_TELEPORTER_A, SOL_TELEPORTER_B,
 	ERASE,
 }
 
@@ -41,6 +43,8 @@ var _sol_prisms: Dictionary = {}
 var _sol_filters: Dictionary = {}
 var _sol_splitters: Dictionary = {}
 var _sol_lenses: Dictionary = {}
+var _sol_refractors: Dictionary = {}
+var _sol_teleporters: Dictionary = {}
 
 var _time: float = 0.0
 var _hovered_cell := Vector2i(-1, -1)
@@ -88,6 +92,10 @@ const PALETTE_LAYOUT := [
 	[Pal.SOL_SPLITTER, "Sol: Splitter", Color(1.0, 0.53, 0.0)],
 	[Pal.SOL_LENS_CONVEX, "Sol: Lens +", Color(0.67, 0.4, 1.0)],
 	[Pal.SOL_LENS_CONCAVE, "Sol: Lens -", Color(0.5, 0.3, 0.8)],
+	[Pal.SOL_REFRACTOR_CW, "Sol: Refractor CW", Color(0.5, 1.0, 0.8)],
+	[Pal.SOL_REFRACTOR_CCW, "Sol: Refractor CCW", Color(0.4, 0.9, 0.7)],
+	[Pal.SOL_TELEPORTER_A, "Sol: Teleport A", Color(0.9, 0.5, 1.0)],
+	[Pal.SOL_TELEPORTER_B, "Sol: Teleport B", Color(0.8, 0.4, 0.9)],
 	[Pal.ERASE, "Erase", Color(0.8, 0.2, 0.2)],
 ]
 
@@ -246,31 +254,43 @@ func _place(gp: Vector2i) -> void:
 		Pal.NULL_EMITTER:
 			if _is_occupied(gp): return
 			_null_emitters.append(gp)
-		# Solution tools — can only place on empty cells (not on fixed elements)
+		# Solution tools — can only place on cells not already occupied
 		Pal.SOL_MIRROR:
-			if _is_fixed(gp): return
+			if _is_occupied(gp): return
 			_sol_mirrors[gp] = 0
 		Pal.SOL_PRISM:
-			if _is_fixed(gp): return
+			if _is_occupied(gp): return
 			_sol_prisms[gp] = 0
 		Pal.SOL_FILTER_R:
-			if _is_fixed(gp): return
+			if _is_occupied(gp): return
 			_sol_filters[gp] = 0
 		Pal.SOL_FILTER_G:
-			if _is_fixed(gp): return
+			if _is_occupied(gp): return
 			_sol_filters[gp] = 1
 		Pal.SOL_FILTER_B:
-			if _is_fixed(gp): return
+			if _is_occupied(gp): return
 			_sol_filters[gp] = 2
 		Pal.SOL_SPLITTER:
-			if _is_fixed(gp): return
+			if _is_occupied(gp): return
 			_sol_splitters[gp] = 0
 		Pal.SOL_LENS_CONVEX:
-			if _is_fixed(gp): return
+			if _is_occupied(gp): return
 			_sol_lenses[gp] = 0
 		Pal.SOL_LENS_CONCAVE:
-			if _is_fixed(gp): return
+			if _is_occupied(gp): return
 			_sol_lenses[gp] = 1
+		Pal.SOL_REFRACTOR_CW:
+			if _is_occupied(gp): return
+			_sol_refractors[gp] = 0
+		Pal.SOL_REFRACTOR_CCW:
+			if _is_occupied(gp): return
+			_sol_refractors[gp] = 1
+		Pal.SOL_TELEPORTER_A:
+			if _is_occupied(gp): return
+			_sol_teleporters[gp] = 0
+		Pal.SOL_TELEPORTER_B:
+			if _is_occupied(gp): return
+			_sol_teleporters[gp] = 1
 		Pal.ERASE:
 			_erase_at(gp)
 
@@ -285,6 +305,8 @@ func _erase_at(gp: Vector2i) -> void:
 	if _sol_filters.has(gp): _sol_filters.erase(gp); changed = true
 	if _sol_splitters.has(gp): _sol_splitters.erase(gp); changed = true
 	if _sol_lenses.has(gp): _sol_lenses.erase(gp); changed = true
+	if _sol_refractors.has(gp): _sol_refractors.erase(gp); changed = true
+	if _sol_teleporters.has(gp): _sol_teleporters.erase(gp); changed = true
 	if changed:
 		_run_validation()
 		return
@@ -326,6 +348,12 @@ func _rotate_solution_tool(gp: Vector2i) -> void:
 		_run_validation()
 	elif _sol_lenses.has(gp):
 		_sol_lenses[gp] = 1 - int(_sol_lenses[gp])
+		_run_validation()
+	elif _sol_refractors.has(gp):
+		_sol_refractors[gp] = 1 - int(_sol_refractors[gp])
+		_run_validation()
+	elif _sol_teleporters.has(gp):
+		_sol_teleporters[gp] = 1 - int(_sol_teleporters[gp])
 		_run_validation()
 	# Also rotate source directions
 	for src in _sources:
@@ -405,6 +433,17 @@ func _build_tools_dict() -> Dictionary:
 		d[pos] = {"type": "splitter", "orientation": int(_sol_splitters[pos])}
 	for pos in _sol_lenses:
 		d[pos] = {"type": "lens", "orientation": int(_sol_lenses[pos])}
+	for pos in _sol_refractors:
+		d[pos] = {"type": "refractor", "orientation": int(_sol_refractors[pos])}
+	# Teleporters — find the paired portal
+	var tp_positions: Array = _sol_teleporters.keys()
+	for pos in _sol_teleporters:
+		var pair_pos: Vector2i = pos
+		for other in tp_positions:
+			if other != pos:
+				pair_pos = other
+				break
+		d[pos] = {"type": "teleporter", "pair": pair_pos}
 	return d
 
 
@@ -436,6 +475,8 @@ func _export() -> void:
 		"filter_budget": _sol_filters.size(),
 		"splitter_budget": _sol_splitters.size(),
 		"lens_budget": _sol_lenses.size(),
+		"refractor_budget": _sol_refractors.size(),
+		"teleporter_budget": _sol_teleporters.size(),
 	}
 	if not _shadow_blocks.is_empty():
 		level["shadow_blocks"] = _shadow_blocks.duplicate(true)
@@ -466,6 +507,8 @@ func _clear_all() -> void:
 	_sol_filters.clear()
 	_sol_splitters.clear()
 	_sol_lenses.clear()
+	_sol_refractors.clear()
+	_sol_teleporters.clear()
 	_run_validation()
 
 
@@ -476,7 +519,7 @@ func _back_to_game() -> void:
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 func _is_occupied(gp: Vector2i) -> bool:
-	return _is_fixed(gp) or _sol_mirrors.has(gp) or _sol_prisms.has(gp) or _sol_filters.has(gp) or _sol_splitters.has(gp) or _sol_lenses.has(gp)
+	return _is_fixed(gp) or _sol_mirrors.has(gp) or _sol_prisms.has(gp) or _sol_filters.has(gp) or _sol_splitters.has(gp) or _sol_lenses.has(gp) or _sol_refractors.has(gp) or _sol_teleporters.has(gp)
 
 
 func _is_fixed(gp: Vector2i) -> bool:

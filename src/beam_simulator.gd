@@ -101,6 +101,10 @@ static func simulate(
 		})
 
 	while queue.size() > 0:
+		# Sort by intensity descending so strong beams process first.
+		# This ensures enemies are destroyed before weak beams reach them,
+		# preventing order-dependent absorption bugs.
+		queue.sort_custom(func(a, b): return float(a["intensity"]) > float(b["intensity"]))
 		var beam: Dictionary = queue.pop_front()
 		if beam["intensity"] < MIN_INTENSITY:
 			continue

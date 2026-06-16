@@ -21,16 +21,25 @@ const CELL_SIZE := 64.0
 const TIER_MIRRORS := ["mirror"]
 const TIER_COLOR := ["mirror", "prism", "filter"]
 const TIER_ADVANCED := ["mirror", "prism", "filter", "splitter", "lens"]
-const TIER_ENEMIES := ["mirror", "prism", "filter", "splitter", "lens", "refractor", "teleporter"]
+const TIER_ENEMIES := ["mirror", "prism", "filter", "splitter", "lens", "refractor"]
 
 
 ## Generate a puzzle for the given floor number (1-based).
 ## Returns a level Dictionary matching the LEVELS format.
 static func generate(floor_num: int) -> Dictionary:
+	return _generate_internal(floor_num, 0)
+
+
+static func _generate_internal(floor_num: int, depth: int) -> Dictionary:
+	# Guard against infinite recursion — if we fail 20 times, fall back
+	# to a guaranteed-simple mirror puzzle so the game never softlocks.
+	if depth >= 20:
+		return _fallback_puzzle(floor_num)
+
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash("floor_%d_%d" % [floor_num, randi()])
 
-	var params := _difficulty_params(floor_num)
+	var params := _difficulty_params(floor_num, rng)
 
 	# Step 1: Place source
 	var source_pos := _random_edge_cell(rng)
@@ -75,9 +84,9 @@ static func generate(floor_num: int) -> Dictionary:
 	# Step 4: Extract targets from beam paths
 	var targets := _extract_targets(result, tools, params.target_count, rng, source_pos)
 
-	# If we couldn't find enough targets, retry with more tools
-	if targets.size() < params.target_count and attempts < 100:
-		return generate(floor_num)
+	# If we couldn't find enough targets, retry
+	if targets.size() < params.target_count:
+		return _generate_internal(floor_num, depth + 1)
 
 	# Step 5: Build the puzzle — strip tools, set budgets
 	var level := {
@@ -119,9 +128,30 @@ static func generate(floor_num: int) -> Dictionary:
 	# targets are still reachable even with blockers/enemies placed.
 	# This is the same pattern as the level editor's _run_validation().
 	if not _validate(level, tools, source):
-		return generate(floor_num)
+		return _generate_internal(floor_num, depth + 1)
 
 	return level
+
+
+## Guaranteed-valid fallback puzzle — used if generation fails 20 times.
+## A simple mirror redirect that always works.
+static func _fallback_puzzle(floor_num: int) -> Dictionary:
+	var source_pos := Vector2i(0, 4)
+	var mirror_pos := Vector2i(4, 4)
+	var target_pos := Vector2i(4, 1)
+	var tools := {mirror_pos: {"type": "mirror", "orientation": 0}}
+	var source := {"pos": source_pos, "direction": Vector2i(1, 0), "color": BeamSimulator.WHITE, "intensity": 1.0}
+	var result := BeamSimulator.simulate(Vector2i(GRID_W, GRID_H), tools, [source], CELL_SIZE)
+	var targets := _extract_targets(result, tools, 1, RandomNumberGenerator.new(), source_pos)
+	if targets.is_empty():
+		targets = {target_pos: {"color": BeamSimulator.WHITE}}
+	return {
+		"name": "Floor %d" % floor_num,
+		"sources": [source],
+		"targets": targets,
+		"blockers": [],
+		"mirror_budget": 1,
+	}
 
 
 # ── Validation ──────────────────────────────────────────────────────────────────
@@ -214,7 +244,7 @@ class DiffParams:
 	var enemy_count: int = 0
 
 
-static func _difficulty_params(floor_num: int) -> DiffParams:
+static func _difficulty_params(floor_num: int, rng: RandomNumberGenerator) -> DiffParams:
 	var p := DiffParams.new()
 
 	if floor_num <= 5:
@@ -229,29 +259,29 @@ static func _difficulty_params(floor_num: int) -> DiffParams:
 		# Normal — add prisms and filters, 2-3 tools, 1-2 targets
 		p.min_tools = 2
 		p.max_tools = 3
-		p.target_count = rng_range(1, 2)
+		p.target_count = rng.randi_range(1, 2)
 		p.tool_pool = TIER_COLOR
 		p.use_blockers = true
-		p.blocker_count = rng_range(1, 2)
+		p.blocker_count = rng.randi_range(1, 2)
 	elif floor_num <= 30:
 		# Hard — add splitters and lenses, 3-4 tools, 2-3 targets
 		p.min_tools = 3
 		p.max_tools = 4
-		p.target_count = rng_range(2, 3)
+		p.target_count = rng.randi_range(2, 3)
 		p.tool_pool = TIER_ADVANCED
 		p.use_blockers = true
-		p.blocker_count = rng_range(1, 3)
+		p.blocker_count = rng.randi_range(1, 3)
 		p.weak_source = true
 	else:
 		# Brutal — all tools + enemies, 4-5 tools, 2-3 targets
 		p.min_tools = 4
 		p.max_tools = 5
-		p.target_count = rng_range(2, 3)
+		p.target_count = rng.randi_range(2, 3)
 		p.tool_pool = TIER_ENEMIES
 		p.use_blockers = true
-		p.blocker_count = rng_range(2, 3)
+		p.blocker_count = rng.randi_range(2, 3)
 		p.use_enemies = true
-		p.enemy_count = rng_range(1, 2)
+		p.enemy_count = rng.randi_range(1, 2)
 		p.weak_source = true
 
 	return p
@@ -394,8 +424,3 @@ static func _make_random_tool(tool_type: String, rng: RandomNumberGenerator) -> 
 static func _in_bounds(p: Vector2i) -> bool:
 	return p.x >= 0 and p.x < GRID_W and p.y >= 0 and p.y < GRID_H
 
-
-static func rng_range(min_val: int, max_val: int) -> int:
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	return rng.randi_range(min_val, max_val)

@@ -28,6 +28,8 @@ static func to_json(level: Dictionary) -> String:
 			"filter": level.get("filter_budget", 0),
 			"splitter": level.get("splitter_budget", 0),
 			"lens": level.get("lens_budget", 0),
+		"refractor": level.get("refractor_budget", 0),
+		"teleporter": level.get("teleporter_budget", 0),
 		},
 	}
 
@@ -116,6 +118,8 @@ static func _json_to_level(data: Dictionary) -> Dictionary:
 	level["filter_budget"] = int(budgets.get("filter", 0))
 	level["splitter_budget"] = int(budgets.get("splitter", 0))
 	level["lens_budget"] = int(budgets.get("lens", 0))
+	level["refractor_budget"] = int(budgets.get("refractor", 0))
+	level["teleporter_budget"] = int(budgets.get("teleporter", 0))
 
 	if data.has("shadow_blocks"):
 		level["shadow_blocks"] = _json_to_shadow_blocks(data["shadow_blocks"])
