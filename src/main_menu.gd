@@ -260,16 +260,7 @@ func _spawn_particles() -> void:
 # ── UI ─────────────────────────────────────────────────────────────────────────
 
 func _create_ui() -> void:
-	# Subtitle
-	var subtitle := Label.new()
-	subtitle.text = "Light is your instrument"
-	subtitle.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	subtitle.position = Vector2(-150, 200)
-	subtitle.size = Vector2(300, 30)
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle.add_theme_font_size_override("font_size", 16)
-	subtitle.add_theme_color_override("font_color", ACCENT_CYAN)
-	add_child(subtitle)
+	
 
 	# Button container
 	var vbox := VBoxContainer.new()
