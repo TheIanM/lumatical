@@ -271,6 +271,7 @@ func _create_ui() -> void:
 	add_child(vbox)
 
 	_play_btn("Play", vbox, _on_play, ACCENT_GREEN)
+	_play_btn("Roguelike", vbox, _on_roguelike, Color(0.9, 0.5, 1.0))
 	_play_btn("Level Editor", vbox, _on_editor, ACCENT_MAGENTA)
 	_play_btn("How to Play", vbox, _on_help, ACCENT_CYAN)
 	_play_btn("Quit", vbox, _on_quit, Color(0.6, 0.6, 0.7))
@@ -304,6 +305,10 @@ func _play_btn(text: String, parent: Node, callback: Callable, col: Color) -> vo
 
 func _on_play() -> void:
 	get_tree().change_scene_to_file("res://scenes/PuzzleSelect.tscn")
+
+
+func _on_roguelike() -> void:
+	get_tree().change_scene_to_file("res://scenes/Roguelike.tscn")
 
 
 func _on_editor() -> void:

@@ -1,31 +1,36 @@
-# Task List — New Tools & Puzzles
+# Task List — Roguelike Puzzle Generator
 
 ## Goal
-Add 2 new tools from the GDD's open question list, then puzzles using them.
-Keeping it to 2 tools to stay focused — pick the most impactful, least punishing.
+Solution-first puzzle generator with difficulty scaling, for the
+procedural roguelike mode described in the GDD.
 
-## Tools Selected
-1. **Refractor Cube** — Bends a beam 90° clockwise regardless of entry angle.
-   Simpler than a mirror but less flexible. Great for teaching routing basics
-   and creating "one way" puzzle constraints.
-2. **Teleporter** — Beam enters one portal, exits the other at same direction.
-   Opens spatial puzzles across the grid. Two linked portals placed as a pair.
+## Design (from GDD §09)
+The generator never needs to *solve* a puzzle — it *constructs* one from
+a known solution:
+1. Place a source at a random position/direction
+2. Place N random tools to route the beam (the solution)
+3. Run BeamSimulator to trace beam paths
+4. Place targets at beam endpoints (with matching colors)
+5. Strip solution tools, set budget = solution tool count
+6. Optionally add enemies/blockers for difficulty
 
-## Tools Deferred
-- Color Mixer — requires two converging beams, complex for prototype
-- Timer Gate — adds timing element, user wants non-punishing
+Guaranteed solvable by construction.
+
+## Difficulty Tiers
+- **Easy** (floors 1-5): 1-2 tools, 1 target, mirrors only
+- **Normal** (floors 6-15): 2-3 tools, 1-2 targets, + prisms/filters
+- **Hard** (floors 16-30): 3-4 tools, 2-3 targets, + splitters/lenses
+- **Brutal** (floors 31+): 4-5 tools, 2-3 targets, + enemies
 
 ## Steps
-1. BeamSimulator: add refractor + teleporter handling
-   → verify: unit trace through each tool type
-2. Grid: add drawing + input for both tools (KEY_6, KEY_7)
-   → verify: can place/remove/rotate
-3. Main: add toolbelt entries, tools dict, new puzzles
-   → verify: puzzles solvable
-4. Run end-to-end
+1. PuzzleGenerator core — place solution, simulate, extract targets
+   → verify: generated puzzles are solvable
+2. Difficulty scaling — parameters per floor
+3. Roguelike scene — floor counter, score, next-floor flow
+4. Run modifiers (stretch goal)
 
 ## Status
-- [ ] Refractor Cube (simulator + grid + main)
-- [ ] Teleporter (simulator + grid + main)
-- [ ] New puzzles (41-50)
-- [ ] End-to-end test
+- [x] PuzzleGenerator core
+- [x] Difficulty scaling
+- [x] Roguelike scene
+- [x] End-to-end test
