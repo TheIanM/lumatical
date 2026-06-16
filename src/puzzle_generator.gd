@@ -169,7 +169,38 @@ static func _validate(level: Dictionary, solution_tools: Dictionary, source: Dic
 	for pos in level["targets"]:
 		if not pos in result.hit_targets:
 			return false
-	return true
+
+	# Also verify the puzzle is NOT trivially solvable — i.e., at least
+	# one target should NOT be hit when no player tools are placed.
+	# This prevents the source from pointing directly at a target.
+	var no_tools: Dictionary = {}
+	for pos in level["targets"]:
+		var tdata := {"type": "target", "color": level["targets"][pos]["color"]}
+		if level["targets"][pos].has("intensity"):
+			tdata["intensity"] = level["targets"][pos]["intensity"]
+		no_tools[pos] = tdata
+	for pos in level.get("blockers", []):
+		no_tools[pos] = {"type": "blocker"}
+	for sb in level.get("shadow_blocks", []):
+		no_tools[sb["pos"]] = {"type": "shadow_block", "threshold": float(sb.get("threshold", 0.75))}
+	for cs in level.get("chromatic_shades", []):
+		no_tools[cs["pos"]] = {"type": "chromatic_shade", "color": cs["color"]}
+	for pos in level.get("null_emitters", []):
+		no_tools[pos] = {"type": "null_emitter"}
+
+	var trivial_result := BeamSimulator.simulate(
+		Vector2i(GRID_W, GRID_H),
+		no_tools,
+		[source],
+		CELL_SIZE,
+	)
+	# If every target is hit with zero tools, the puzzle is trivial
+	var trivially_solved := true
+	for pos in level["targets"]:
+		if not pos in trivial_result.hit_targets:
+			trivially_solved = false
+			break
+	return not trivially_solved
 
 class DiffParams:
 	var min_tools: int = 1
