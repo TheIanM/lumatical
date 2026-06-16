@@ -1,3 +1,4 @@
+class_name Main
 extends Node2D
 
 ## Lumatical — Main game controller.
