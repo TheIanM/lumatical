@@ -399,11 +399,13 @@ func _create_toolbelt() -> void:
 	# Only show tools the player has in inventory
 	for i in range(TOOL_KEYS.size()):
 		var ttype: String = TOOL_KEYS[i]
-		var count: int = _inventory.get(ttype, 0)
 		var btn := Button.new()
 		btn.text = "[%d] %s" % [i + 1, TOOL_NAMES[i]]
 		btn.custom_minimum_size = Vector2(130, 56)
 		btn.add_theme_font_size_override("font_size", 14)
+		var icon_tex := ToolIcons.get_icon(ttype, TOOL_COLORS[i])
+		btn.icon = icon_tex
+		btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.pressed.connect(_on_toolbelt_button.bind(i))
 		_toolbelt.add_child(btn)
 		_tool_buttons.append({"btn": btn, "type": ttype})

@@ -632,6 +632,7 @@ var _toolbelt: HBoxContainer
 var _tool_buttons: Array = []
 
 const TOOL_NAMES := ["Mirror", "Prism", "Filter", "Splitter", "Lens", "Refractor", "Teleport"]
+const TOOL_TYPES := ["mirror", "prism", "filter", "splitter", "lens", "refractor", "teleporter"]
 const TOOL_COLORS := [
 	Color(0.0, 0.94, 1.0),   # Mirror — cyan
 	Color(1.0, 0.0, 0.9),    # Prism — magenta
@@ -745,6 +746,10 @@ func _create_toolbelt() -> void:
 		btn.text = "[%d] %s" % [i + 1, TOOL_NAMES[i]]
 		btn.custom_minimum_size = Vector2(140, 56)
 		btn.add_theme_font_size_override("font_size", 16)
+		# Set vector icon
+		var icon_tex := ToolIcons.get_icon(TOOL_TYPES[i], TOOL_COLORS[i])
+		btn.icon = icon_tex
+		btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.pressed.connect(_on_toolbelt_button.bind(i))
 		_toolbelt.add_child(btn)
 		_tool_buttons.append(btn)
